@@ -1,0 +1,20 @@
+{
+  "name": "android-tv-tools",
+  "interface": {
+    "displayName": "Android TV Tools"
+  },
+  "plugins": [
+    {
+      "name": "android-tv-apps-helper",
+      "source": {
+        "source": "local",
+        "path": "./plugins/android-tv-apps-helper"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
