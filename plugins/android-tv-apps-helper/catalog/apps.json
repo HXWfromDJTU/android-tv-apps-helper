@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "apps": [
+    {
+      "id": "clash-meta",
+      "name": "Clash Meta for Android",
+      "category": "network",
+      "version": "2.11.33",
+      "distribution": {
+        "mode": "upstream_release",
+        "upstream_repository": "https://github.com/MetaCubeX/ClashMetaForAndroid",
+        "license": "GPL-3.0"
+      },
+      "assets": [
+        {
+          "abi": "armeabi-v7a",
+          "filename": "cmfa-2.11.33-meta-armeabi-v7a-release.apk",
+          "size": 45114811,
+          "sha256": "3cf6f1b67784d233fdc103c3d78690cb2e243a732997816f5d6db11db0f5db04",
+          "url": "https://github.com/MetaCubeX/ClashMetaForAndroid/releases/download/v2.11.33/cmfa-2.11.33-meta-armeabi-v7a-release.apk"
+        }
+      ]
+    },
+    {
+      "id": "smarttube",
+      "name": "SmartTube",
+      "category": "media",
+      "version": "32.10 Stable",
+      "distribution": {
+        "mode": "project_release",
+        "upstream_repository": "https://github.com/yuliskov/SmartTube",
+        "license": "MIT",
+        "redistribution_evidence": "Upstream repository MIT license; local asset digest matches upstream release 32.10s."
+      },
+      "assets": [
+        {
+          "abi": "armeabi-v7a",
+          "filename": "SmartTube_stable_32.10_armeabi-v7a.apk",
+          "size": 25001470,
+          "sha256": "61e335a9816621feaa0b2aacdc17f68e652773fe33304ec091b14fac36f95025",
+          "url": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.1.0/SmartTube_stable_32.10_armeabi-v7a.apk"
+        }
+      ]
+    },
+    {
+      "id": "dangbei-market",
+      "name": "当贝市场",
+      "category": "app-store",
+      "version": "unknown",
+      "distribution": {
+        "mode": "pending_rights",
+        "reason": "A local APK exists, but public redistribution permission has not been verified."
+      },
+      "assets": []
+    },
+    {
+      "id": "emotn-ui",
+      "name": "Emotn UI",
+      "category": "launcher",
+      "version": "1.1.0.1",
+      "distribution": {
+        "mode": "pending_rights",
+        "reason": "A local APK exists, but public redistribution permission has not been verified."
+      },
+      "assets": []
+    },
+    {
+      "id": "jiashitong",
+      "name": "佳视通",
+      "category": "live-tv",
+      "version": "1.0.0",
+      "distribution": {
+        "mode": "pending_file",
+        "reason": "The expected APK was not found locally and redistribution permission is unverified."
+      },
+      "assets": []
+    },
+    {
+      "id": "chengfeng-tv",
+      "name": "乘风TV",
+      "category": "live-tv",
+      "version": "1.0.3",
+      "distribution": {
+        "mode": "pending_file",
+        "reason": "The expected APK was not found locally and redistribution permission is unverified."
+      },
+      "assets": []
+    },
+    {
+      "id": "polang-tv",
+      "name": "魄狼TV",
+      "category": "live-tv",
+      "version": "1.0.7",
+      "distribution": {
+        "mode": "pending_file",
+        "reason": "The expected APK was not found locally and redistribution permission is unverified."
+      },
+      "assets": []
+    },
+    {
+      "id": "nfgc-tv",
+      "name": "奈飞工厂TV",
+      "category": "media",
+      "version": "9.0.1 test",
+      "distribution": {
+        "mode": "pending_rights",
+        "reason": "A local APK exists, but its publisher identity and public redistribution permission are unverified."
+      },
+      "assets": []
+    }
+  ]
+}

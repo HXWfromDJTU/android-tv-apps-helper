@@ -1,0 +1,5 @@
+interface:
+  display_name: "Android TV Apps Helper"
+  short_description: "Guided Android TV setup, APK installs, and recovery"
+  brand_color: "#3DDC84"
+  default_prompt: "Use $android-tv-apps-helper to connect my TV and guide me with one required choice at a time."

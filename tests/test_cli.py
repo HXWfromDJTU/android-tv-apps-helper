@@ -112,6 +112,85 @@ class CliTests(unittest.TestCase):
                 "S0",
             )
 
+    def test_catalog_lists_only_eligible_downloads(self):
+        catalog = (
+            Path(__file__).parents[1]
+            / "plugins"
+            / "android-tv-apps-helper"
+            / "catalog"
+            / "apps.json"
+        )
+
+        code, output, error = self.run_cli(
+            ["catalog", "--catalog", str(catalog), "--eligible"]
+        )
+
+        self.assertEqual((code, error), (0, ""))
+        self.assertEqual(
+            [item["id"] for item in json.loads(output)],
+            ["clash-meta", "smarttube"],
+        )
+
+    def test_install_plan_requires_explicit_approval_before_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            session = root / "session.json"
+            apk = root / "sample.apk"
+            plan = root / "plan.json"
+            import hashlib
+            import zipfile
+
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("AndroidManifest.xml", b"manifest")
+            digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+            self.run_cli(["init-session", str(session), "--surface", "text_menu"])
+
+            code, output, error = self.run_cli(
+                [
+                    "plan-install",
+                    str(session),
+                    "--app-id",
+                    "sample",
+                    "--serial",
+                    "tv:5555",
+                    "--apk",
+                    str(apk),
+                    "--sha256",
+                    digest,
+                    "--out",
+                    str(plan),
+                ]
+            )
+            self.assertEqual((code, error), (0, ""))
+            self.assertEqual(json.loads(output)["status"], "planned")
+
+            code, _, error = self.run_cli(
+                [
+                    "approve-install",
+                    str(session),
+                    "--plan",
+                    str(plan),
+                    "--confirmation",
+                    "yes",
+                ]
+            )
+            self.assertEqual(code, 2)
+            self.assertIn("confirm_install", error)
+            self.assertIsNone(json.loads(session.read_text())["approved_plan"])
+
+            code, output, error = self.run_cli(
+                [
+                    "approve-install",
+                    str(session),
+                    "--plan",
+                    str(plan),
+                    "--confirmation",
+                    "confirm_install",
+                ]
+            )
+            self.assertEqual((code, error), (0, ""))
+            self.assertEqual(json.loads(output)["approved_plan"]["status"], "approved")
+
 
 if __name__ == "__main__":
     unittest.main()

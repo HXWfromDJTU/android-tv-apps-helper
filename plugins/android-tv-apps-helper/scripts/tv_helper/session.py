@@ -85,6 +85,12 @@ class SessionStore:
         self._write(data)
         return answer
 
+    def set_approved_plan(self, plan: dict[str, Any]) -> None:
+        data = self.read()
+        data["approved_plan"] = plan
+        data["updated_at"] = _timestamp()
+        self._write(data)
+
     def _write(self, value: dict[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(self.path.suffix + ".tmp")
