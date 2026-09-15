@@ -466,13 +466,8 @@ $HELPER install-approved outputs/demo/session.json \
 ```sh
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q plugins/android-tv-apps-helper/scripts
-python3 scripts/build_platform_packages.py --platform workbuddy \
-  --output dist/android-tv-apps-helper-workbuddy-v0.3.0.zip
-python3 scripts/build_platform_packages.py --platform doubao-work \
-  --output dist/android-tv-apps-helper-doubao-work-v0.3.0.zip
-python3 scripts/build_platform_packages.py --platform claude \
-  --output dist/android-tv-apps-helper-claude-v0.3.0.zip
-shasum -a 256 dist/android-tv-apps-helper-*-v0.3.0.zip > dist/SHA256SUMS
+python3 scripts/build_release.py --output-dir dist
+(cd dist && shasum -a 256 -c SHA256SUMS)
 ```
 
 打包器会从同一份 Codex 核心 Skill、references、harness 和 catalog 生成各平台自包含 ZIP；平台包只调整 frontmatter 和 harness 定位方式，不复制核心流程。所有 ZIP 都不会包含 APK、Codex manifest 或 `agents/openai.yaml`。输出采用固定文件顺序、时间戳和权限，便于重现并核对 SHA-256。

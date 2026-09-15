@@ -10,6 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).parents[1]
 BUILDER = REPO_ROOT / "scripts" / "build_platform_packages.py"
+RELEASE_BUILDER = REPO_ROOT / "scripts" / "build_release.py"
 PLATFORMS = ("workbuddy", "doubao-work", "claude")
 ROOT = "android-tv-apps-helper/"
 SHARED_CORE = {
@@ -125,6 +126,34 @@ class PlatformPackageTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertFalse(output.exists())
+
+    def test_release_builder_writes_portable_checksum_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory) / "release"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(RELEASE_BUILDER),
+                    "--output-dir",
+                    str(output_dir),
+                ],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            metadata = json.loads(result.stdout)
+            self.assertEqual(metadata["version"], "0.3.0")
+            self.assertEqual(len(metadata["artifacts"]), 3)
+            lines = (output_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(lines), 3)
+            self.assertTrue(
+                all("  android-tv-apps-helper-" in line for line in lines)
+            )
+            self.assertFalse(any("dist/" in line or "/" in line for line in lines))
+            self.assertTrue((output_dir / "platform-compatibility.json").is_file())
 
 
 if __name__ == "__main__":
