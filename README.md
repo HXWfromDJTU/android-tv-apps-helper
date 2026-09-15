@@ -1,8 +1,8 @@
 # Android TV Apps Helper
 
-一个适配腾讯 WorkBuddy 与 Codex / ChatGPT Agent 的 Android TV 引导式 Skill。它把“连电视、选软件、核验 APK、安装、验证、恢复”收敛成可检查的状态机，让用户每轮只回答一个明确问题。
+一个同时适配 Claude Desktop/Code、Codex、腾讯 WorkBuddy 与豆包工作的 Android TV 引导式 Skill。它把“连电视、选软件、核验 APK、安装、验证、恢复”收敛成可检查的状态机，让用户每轮只回答一个明确问题。
 
-当前版本：`v0.2.0`
+当前版本：`v0.3.0`
 
 ## 交互原则
 
@@ -13,6 +13,19 @@
 - 所有 ADB 设备命令绑定已确认的 `serial`。
 - 安装前展示不可变计划；设备、文件摘要、命令或风险发生变化时，原批准失效。
 - “APK 有效”“已安装”“已启动”“有运行信号”“用户现场验收”分别记录，不混写为“正常”。
+
+## 四平台兼容原则
+
+四个平台共享同一份 S0–S11 状态机、`pending_question` 问题锁、ADB 安全约束、APK 来源规则和证据等级。平台适配器只能改变安装入口、Skill 根目录定位和选择控件的呈现方式，不能改变核心判断与用户批准边界。
+
+| 平台 | 分发方式 | 本地执行要求 | v0.3.0 验证状态 |
+|---|---|---|---|
+| Codex | 仓库 Plugin / Marketplace | 本地 Shell | 等待本轮真人机验证 |
+| 腾讯 WorkBuddy | Agent 对话安装或上传 ZIP | 本地电脑任务和 Bash | 等待本轮真人机验证 |
+| 豆包工作 | Agent 对话安装或本地导入 ZIP | 必须使用本地电脑，不能使用云电脑 | 等待本轮真人机验证 |
+| Claude Desktop/Code | Desktop 上传 ZIP；Code 使用 `.claude/skills` | 本地代码执行 | 自动化包验证通过；本轮按要求不做真人机验证 |
+
+机器可读状态见 [`docs/platform-compatibility.json`](docs/platform-compatibility.json)，逐项证据见 [`docs/platform-validation.md`](docs/platform-validation.md)。
 
 ## 完整状态流转
 
@@ -139,7 +152,7 @@ WorkBuddy 官方说明 Skill 可以封装脚本并通过 Bash 执行；第三方
 请安装 Android TV Apps Helper Skill。
 
 Skill 安装包：
-https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.2.0/android-tv-apps-helper-workbuddy-v0.2.0.zip
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/android-tv-apps-helper-workbuddy-v0.3.0.zip
 ```
 
 WorkBuddy Agent 可以根据该 GitHub Release 地址下载并完成 Skill 安装。这个对话安装渠道已在腾讯中国大陆版 WorkBuddy 中实际验证成功。
@@ -147,7 +160,7 @@ WorkBuddy Agent 可以根据该 GitHub Release 地址下载并完成 Skill 安�
 安装完成后，进入「专家·技能·连接器」→「技能」→「已安装」，确认：
 
 - 名称为 `Android TV Apps Helper`；
-- 版本为 `0.2.0`；
+- 版本为 `0.3.0`；
 - Skill 已启用；
 - WorkBuddy 的安全扫描没有显示异常。
 
@@ -155,9 +168,9 @@ WorkBuddy Agent 可以根据该 GitHub Release 地址下载并完成 Skill 安�
 
 ### 第 3 步：手动下载并上传（兼容回退）
 
-打开本项目 [v0.2.0 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.2.0)，只下载以下两个文件：
+打开本项目 [v0.3.0 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.0)，只下载以下两个文件：
 
-- `android-tv-apps-helper-workbuddy-v0.2.0.zip`
+- `android-tv-apps-helper-workbuddy-v0.3.0.zip`
 - `SHA256SUMS`
 
 不要上传 GitHub 自动生成的 `Source code (zip)`，也不要上传 Codex 插件目录；WorkBuddy 需要的是上述专用 ZIP。
@@ -165,20 +178,20 @@ WorkBuddy Agent 可以根据该 GitHub Release 地址下载并完成 Skill 安�
 macOS 可用以下命令下载并核验：
 
 ```sh
-mkdir -p ~/Downloads/android-tv-apps-helper-v0.2.0
-cd ~/Downloads/android-tv-apps-helper-v0.2.0
-curl -fLO https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.2.0/android-tv-apps-helper-workbuddy-v0.2.0.zip
-curl -fLO https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.2.0/SHA256SUMS
+mkdir -p ~/Downloads/android-tv-apps-helper-v0.3.0
+cd ~/Downloads/android-tv-apps-helper-v0.3.0
+curl -fLO https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/android-tv-apps-helper-workbuddy-v0.3.0.zip
+curl -fLO https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/SHA256SUMS
 shasum -a 256 -c SHA256SUMS
 ```
 
 输出包含 `OK` 才继续上传。Windows 可在 PowerShell 中运行：
 
 ```powershell
-$url = "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.2.0"
-Invoke-WebRequest "$url/android-tv-apps-helper-workbuddy-v0.2.0.zip" -OutFile "$HOME\Downloads\android-tv-apps-helper-workbuddy-v0.2.0.zip"
+$url = "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0"
+Invoke-WebRequest "$url/android-tv-apps-helper-workbuddy-v0.3.0.zip" -OutFile "$HOME\Downloads\android-tv-apps-helper-workbuddy-v0.3.0.zip"
 Invoke-WebRequest "$url/SHA256SUMS" -OutFile "$HOME\Downloads\SHA256SUMS"
-Get-FileHash "$HOME\Downloads\android-tv-apps-helper-workbuddy-v0.2.0.zip" -Algorithm SHA256
+Get-FileHash "$HOME\Downloads\android-tv-apps-helper-workbuddy-v0.3.0.zip" -Algorithm SHA256
 Get-Content "$HOME\Downloads\SHA256SUMS"
 ```
 
@@ -189,9 +202,9 @@ Get-Content "$HOME\Downloads\SHA256SUMS"
 3. 进入顶部「技能」页签。
 4. 点击「添加技能」。
 5. 选择「上传技能」。
-6. 选择刚才下载的 `android-tv-apps-helper-workbuddy-v0.2.0.zip`，不要先解压。
+6. 选择刚才下载的 `android-tv-apps-helper-workbuddy-v0.3.0.zip`，不要先解压。
 7. 等待 WorkBuddy 完成解析和安全扫描。
-8. 核对名称是 `Android TV Apps Helper`、版本是 `0.2.0`、作者是 `SwainWong`，并留意它需要 Bash 来执行本机 ADB harness。
+8. 核对名称是 `Android TV Apps Helper`、版本是 `0.3.0`、作者是 `SwainWong`，并留意它需要 Bash 来执行本机 ADB harness。
 9. 完成安装后，进入「已安装」，确认该 Skill 的开关处于启用状态。
 
 官方界面路径与本地 Skill 上传方式以[腾讯 WorkBuddy 当前技能文档](https://www.workbuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Skills-Market)为准。
@@ -336,9 +349,54 @@ IP: 192.168.1.20
 | 没有选择卡片 | 这是允许的降级路径；Skill 应用同一问题 ID 和选项显示编号文字菜单 |
 | 某 APK 显示 pending | 该文件缺失或公开再分发权未确认；选择跳过、提交有权使用的本地 APK 或返回 |
 
-## Codex / ChatGPT 插件安装
+## 豆包工作：安装与使用
 
-### ChatGPT 桌面版 / Codex App
+豆包工作必须运行“本地电脑”任务。云电脑位于远端环境，不能把它当成可访问家庭局域网电视的 ADB 主机；Skill 会在执行任何 ADB 命令前阻止这种组合。
+
+1. 从[豆包工作官网](https://www.doubao.com/work)下载安装桌面客户端并登录。
+2. 新建“本地电脑”任务，不要选择云电脑。
+3. 把下面的安装指令完整发送给 Agent：
+
+```yaml
+请安装 Android TV Apps Helper Skill。
+
+Skill 安装包：
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/android-tv-apps-helper-doubao-work-v0.3.0.zip
+```
+
+4. 按客户端提示检查并确认 Skill 安装。完成后进入「技能·连接器·伙伴」或当前版本的技能管理入口，确认 `Android TV Apps Helper` 已出现并启用。
+5. 如果 Agent 只能下载、不能导入，则手动下载同一个 ZIP，在技能管理中选择“导入本地技能文件”；不要上传 GitHub 自动生成的 Source code ZIP。
+6. 新建本地电脑对话，通过 `/`、输入框“更多技能”或明确写出 Skill 名称进行调用：
+
+```text
+请明确使用已经安装的 Android TV Apps Helper Skill。
+这是本地电脑任务。先不要执行 ADB；请完成宿主前置检查，然后从 S0 开始，并严格保持每轮一个必答问题。
+```
+
+首轮合格结果必须只说明只读与变更边界，并显示 `S0-Q1` 的 `1. 开始只读检查`、`2. 查看检查范围`、`0. 安全退出`。如果用户回复“继续”，应原样重显同一问题，且不得执行 ADB。
+
+## Claude Desktop / Code：安装与使用
+
+> `v0.3.0` 已完成自动化包结构与 harness 验证；本轮按用户要求暂不做 Claude 客户端真人机验证。
+
+### Claude Desktop / claude.ai
+
+1. 下载 `android-tv-apps-helper-claude-v0.3.0.zip`。
+2. 打开 `Customize` → `Skills` → `+` → `Create skill` → `Upload a skill`。
+3. 上传完整 ZIP，并开启该 Skill。自定义 Skill 需要账户支持自定义 Skills 与代码执行；以 [Claude 官方 Skills 说明](https://support.claude.com/en/articles/12512180-use-skills-in-claude)为准。
+4. 新建对话，输入“请使用 Android TV Apps Helper，从 S0 开始”。
+
+### Claude Code
+
+将 ZIP 中的完整目录放入项目级 `.claude/skills/android-tv-apps-helper/`，或个人级 `~/.claude/skills/android-tv-apps-helper/`。Claude Code 会通过 `${CLAUDE_SKILL_DIR}` 定位随包 harness；目录位置和调用规则见 [Claude Code 官方文档](https://code.claude.com/docs/en/skills)。
+
+```text
+/android-tv-apps-helper 请帮我配置这台 Android TV，从 S0 开始
+```
+
+## Codex 插件安装
+
+### Codex App
 
 ```sh
 git clone https://github.com/HXWfromDJTU/android-tv-apps-helper.git
@@ -377,8 +435,9 @@ Codex 安装后可输入：
 ```sh
 HELPER=plugins/android-tv-apps-helper/scripts/tv-helper
 
-# 创建会话并锁定交互界面类型
-$HELPER init-session outputs/demo/session.json --surface text_menu
+# 创建会话并锁定平台、执行环境和交互界面类型
+$HELPER init-session outputs/demo/session.json --surface text_menu \
+  --host-platform codex --execution-context local_computer
 
 # 校验目录；--eligible 只显示当前可下载项
 $HELPER catalog --catalog plugins/android-tv-apps-helper/catalog/apps.json --eligible
@@ -407,10 +466,15 @@ $HELPER install-approved outputs/demo/session.json \
 ```sh
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q plugins/android-tv-apps-helper/scripts
-python3 scripts/build_workbuddy_package.py \
-  --output dist/android-tv-apps-helper-workbuddy-v0.2.0.zip
+python3 scripts/build_platform_packages.py --platform workbuddy \
+  --output dist/android-tv-apps-helper-workbuddy-v0.3.0.zip
+python3 scripts/build_platform_packages.py --platform doubao-work \
+  --output dist/android-tv-apps-helper-doubao-work-v0.3.0.zip
+python3 scripts/build_platform_packages.py --platform claude \
+  --output dist/android-tv-apps-helper-claude-v0.3.0.zip
+shasum -a 256 dist/android-tv-apps-helper-*-v0.3.0.zip > dist/SHA256SUMS
 ```
 
-打包器会从 Codex 版 Skill、references、harness 和 catalog 生成自包含的 WorkBuddy ZIP；不会把 APK、Codex manifest 或 `agents/openai.yaml` 放进 Skill 包。输出采用固定文件顺序、时间戳和权限，便于重现并核对 SHA-256。
+打包器会从同一份 Codex 核心 Skill、references、harness 和 catalog 生成各平台自包含 ZIP；平台包只调整 frontmatter 和 harness 定位方式，不复制核心流程。所有 ZIP 都不会包含 APK、Codex manifest 或 `agents/openai.yaml`。输出采用固定文件顺序、时间戳和权限，便于重现并核对 SHA-256。
 
 项目许可证为 [MIT](LICENSE)。第三方 APK 适用其各自许可证。

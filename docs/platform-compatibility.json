@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "skill": "android-tv-apps-helper",
+  "version": "0.3.0",
+  "core_contract": {
+    "states": "S0-S11",
+    "question_lock": "pending_question",
+    "required_evidence_levels": [
+      "file_validated",
+      "installed",
+      "launched",
+      "runtime_signal",
+      "on_site_accepted"
+    ],
+    "local_adb_only": true
+  },
+  "platforms": {
+    "codex": {
+      "distribution": "repository_plugin",
+      "artifact_validation": "passed",
+      "live_installation": "pending",
+      "live_invocation": "pending",
+      "dialogue_contract": "pending"
+    },
+    "workbuddy": {
+      "distribution": "android-tv-apps-helper-workbuddy-v0.3.0.zip",
+      "artifact_validation": "passed",
+      "live_installation": "pending",
+      "live_invocation": "pending",
+      "dialogue_contract": "pending"
+    },
+    "doubao-work": {
+      "distribution": "android-tv-apps-helper-doubao-work-v0.3.0.zip",
+      "required_execution_context": "local_computer",
+      "artifact_validation": "passed",
+      "live_installation": "pending",
+      "live_invocation": "pending",
+      "dialogue_contract": "pending"
+    },
+    "claude": {
+      "distribution": "android-tv-apps-helper-claude-v0.3.0.zip",
+      "artifact_validation": "passed",
+      "live_installation": "not_run",
+      "live_invocation": "not_run",
+      "dialogue_contract": "not_run",
+      "note": "Live validation deferred by the user for v0.3.0."
+    }
+  }
+}
