@@ -29,7 +29,7 @@
 所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.0 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.0)。安装前可用：
 
 ```sh
-shasum -a 256 -c SHA256SUMS
+(cd 下载目录 && shasum -a 256 -c SHA256SUMS)
 ```
 
 ## WorkBuddy 安装与使用
@@ -220,7 +220,7 @@ flowchart TD
 ```sh
 PYTHONPATH=plugins/android-tv-apps-helper/scripts python3 -m unittest discover -s tests -v
 python3 scripts/build_release.py --output-dir dist
-shasum -a 256 -c dist/SHA256SUMS
+(cd dist && shasum -a 256 -c SHA256SUMS)
 ```
 
 平台验证结果见 [docs/platform-validation.md](docs/platform-validation.md)，历史问题和解决方案见 [docs/ux-feedback-log.md](docs/ux-feedback-log.md)。
