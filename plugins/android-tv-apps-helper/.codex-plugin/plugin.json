@@ -1,6 +1,6 @@
 {
   "name": "android-tv-apps-helper",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Guided Android TV ADB setup, APK installation, verification, and recovery.",
   "author": {
     "name": "SwainWong",
@@ -9,7 +9,7 @@
   "homepage": "https://github.com/HXWfromDJTU/android-tv-apps-helper#readme",
   "repository": "https://github.com/HXWfromDJTU/android-tv-apps-helper",
   "license": "MIT",
-  "keywords": ["android-tv", "adb", "apk", "codex", "skill"],
+  "keywords": ["android-tv", "adb", "apk", "claude", "codex", "workbuddy", "doubao-work", "skill"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Android TV Apps Helper",
