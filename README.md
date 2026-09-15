@@ -121,7 +121,7 @@ flowchart TD
 
 ## 腾讯 WorkBuddy：从安装到使用
 
-> 这里的 WorkBuddy 指腾讯中国大陆版桌面办公 Agent。WorkBuddy 版通过“上传技能”安装，不使用 Codex 的 `$skill`、`plugin marketplace` 或 `.codex-plugin` 安装方式。
+> 这里的 WorkBuddy 指腾讯中国大陆版桌面办公 Agent。首选安装方式是在 WorkBuddy Agent 对话中直接提供本项目 GitHub Release 的 WorkBuddy 专用 ZIP 地址；该方式已经完成实际安装验证。若当前客户端无法从对话安装，再使用“上传技能”作为兼容回退。WorkBuddy 不使用 Codex 的 `$skill`、`plugin marketplace` 或 `.codex-plugin` 安装方式。
 
 ### 第 1 步：安装腾讯 WorkBuddy
 
@@ -131,7 +131,29 @@ flowchart TD
 
 WorkBuddy 官方说明 Skill 可以封装脚本并通过 Bash 执行；第三方 Skill 会以用户身份读取获准文件或执行命令，因此安装前应核对来源、脚本和权限。参见[腾讯 WorkBuddy 技能说明](https://www.workbuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Skills-Market)和[开放平台 Skill 结构规范](https://open.workbuddy.cn/docs/skill)。
 
-### 第 2 步：下载 WorkBuddy 专用 Skill 包
+### 第 2 步：在 WorkBuddy Agent 对话中直接安装（推荐）
+
+在 WorkBuddy 中新建 Agent 对话，完整粘贴并发送下面这段提示词：
+
+```yaml
+请安装 Android TV Apps Helper Skill。
+
+Skill 安装包：
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.2.0/android-tv-apps-helper-workbuddy-v0.2.0.zip
+```
+
+WorkBuddy Agent 可以根据该 GitHub Release 地址下载并完成 Skill 安装。这个对话安装渠道已在腾讯中国大陆版 WorkBuddy 中实际验证成功。
+
+安装完成后，进入「专家·技能·连接器」→「技能」→「已安装」，确认：
+
+- 名称为 `Android TV Apps Helper`；
+- 版本为 `0.2.0`；
+- Skill 已启用；
+- WorkBuddy 的安全扫描没有显示异常。
+
+如果 Agent 明确提示当前客户端不能下载或安装该 Skill，或者安装后没有出现在「已安装」列表中，请继续使用下一步的手动上传方式；不要仅根据 Agent 的文字回复判断安装已经成功。
+
+### 第 3 步：手动下载并上传（兼容回退）
 
 打开本项目 [v0.2.0 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.2.0)，只下载以下两个文件：
 
@@ -150,7 +172,7 @@ curl -fLO https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/downloa
 shasum -a 256 -c SHA256SUMS
 ```
 
-输出包含 `OK` 才继续安装。Windows 可在 PowerShell 中运行：
+输出包含 `OK` 才继续上传。Windows 可在 PowerShell 中运行：
 
 ```powershell
 $url = "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.2.0"
@@ -160,9 +182,7 @@ Get-FileHash "$HOME\Downloads\android-tv-apps-helper-workbuddy-v0.2.0.zip" -Algo
 Get-Content "$HOME\Downloads\SHA256SUMS"
 ```
 
-确认两个命令展示的 SHA-256 一致。
-
-### 第 3 步：安装 Skill
+确认两个命令展示的 SHA-256 一致，然后上传 Skill：
 
 1. 启动 WorkBuddy。
 2. 点击左侧的「专家·技能·连接器」。
@@ -296,7 +316,7 @@ IP: 192.168.1.20
 
 ### 第 10 步：更新、关闭或卸载
 
-- 更新：从本项目新的 GitHub Release 下载新版 WorkBuddy ZIP 和 `SHA256SUMS`，核验后在「添加技能」→「上传技能」重新导入；根据 WorkBuddy 提示确认版本更新。
+- 更新：优先在 WorkBuddy Agent 新对话中发送“请安装 Android TV Apps Helper Skill”，并提供新版本 WorkBuddy ZIP 的 GitHub Release 直链；安装后在「已安装」中核对版本。若对话安装不可用，再下载新版 ZIP 和 `SHA256SUMS`，核验后通过「添加技能」→「上传技能」重新导入。
 - 暂停：进入「已安装」，关闭 `Android TV Apps Helper`。关闭不会删除 Skill 文件，但它不会参与模型调用。
 - 卸载：在「已安装」中打开该 Skill 的管理页面并选择卸载。
 - 更换版本后应新建对话，避免旧会话继续使用已经加载的旧指令。
@@ -305,6 +325,8 @@ IP: 192.168.1.20
 
 | 问题 | 处理方式 |
 |---|---|
+| Agent 无法从 GitHub 直接安装 | 确认使用的是 Release 中名称包含 `workbuddy` 的 ZIP 直链；仍无法安装时，按第 3 步下载、校验并手动上传 |
+| Agent 回复已安装，但列表中不存在 | 以「专家·技能·连接器」→「技能」→「已安装」中的实际记录为准；不存在就按第 3 步手动上传 |
 | ZIP 解析失败 | 确认上传的是 Release 中名称包含 `workbuddy` 的原始 ZIP，而不是 Source code ZIP；不要二次压缩 |
 | Skill 没有触发 | 确认它在「已安装」中已启用，然后新建任务并从输入框显式选择该 Skill |
 | 提示无法运行 Bash | 检查当前任务的本地终端权限与安全沙箱审批；不要直接切换为无条件完全访问 |
