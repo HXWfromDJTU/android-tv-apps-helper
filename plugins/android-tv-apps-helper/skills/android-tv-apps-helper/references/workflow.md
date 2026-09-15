@@ -1,5 +1,9 @@
 # Workflow States
 
+## Host preflight
+
+Before S0, identify the host and prove the Skill can run local commands and access the same LAN as the TV. Initialize the checkpoint with `--host-platform` and `--execution-context local_computer`. 豆包工作 must use its local-computer task, not cloud computer. If the host cannot provide local execution, show the verified limitation and ask exactly one question: switch to local mode, retry detection, or safe exit. Do not run ADB and do not create a false success record.
+
 ## S0 Start
 
 Detect whether a host-native structured input surface is available. Create `session.json`. Ask `S0-Q1`: begin read-only checks, view scope, or safe exit. Do not run preflight until the user explicitly chooses begin.

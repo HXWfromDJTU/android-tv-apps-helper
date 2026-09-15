@@ -1,5 +1,9 @@
 # Interaction Contract
 
+## Cross-platform invariants
+
+Claude, Codex, WorkBuddy, and 豆包工作 use the same S0–S11 state graph, `pending_question` data, stable option values, mutation approvals, and evidence labels. Host-native controls may change presentation only. They cannot merge questions, omit options, preselect the recommendation, infer consent, or advance the state without a harness-accepted answer.
+
 ## Question lock
 
 Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `type`, `prompt`, stable options, `required: true`, `answer_contract`, and `attempts`.

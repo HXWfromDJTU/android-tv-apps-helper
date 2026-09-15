@@ -18,16 +18,39 @@ class SessionStore:
         self.path = Path(path)
 
     @classmethod
-    def create(cls, path: Path, *, interaction_surface: str) -> "SessionStore":
+    def create(
+        cls,
+        path: Path,
+        *,
+        interaction_surface: str,
+        host_platform: str = "codex",
+        execution_context: str = "local_computer",
+        skill_root: str | None = None,
+        python_command: str = "python3",
+    ) -> "SessionStore":
         if interaction_surface not in {"structured_form", "text_menu"}:
             raise ValueError("interaction_surface must be structured_form or text_menu")
+        supported_platforms = {"claude", "codex", "workbuddy", "doubao-work"}
+        if host_platform not in supported_platforms:
+            raise ValueError(f"Unsupported host_platform: {host_platform}")
+        if execution_context != "local_computer":
+            raise ValueError(
+                "Android TV ADB requires execution_context=local_computer; "
+                "a cloud computer cannot reach the local TV safely."
+            )
         store = cls(path)
         store._write(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "created_at": _timestamp(),
                 "updated_at": _timestamp(),
+                "host_platform": host_platform,
+                "execution_context": execution_context,
                 "interaction_surface": interaction_surface,
+                "skill_root": skill_root,
+                "python_command": python_command,
+                "adb_path": None,
+                "runtime_ready": True,
                 "current_state": "S0",
                 "pending_question": None,
                 "target_serial": None,

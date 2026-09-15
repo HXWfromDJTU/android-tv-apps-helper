@@ -7,11 +7,15 @@ description: Use when a user wants to connect an Android TV over ADB, install or
 
 Guide one verified Android TV through a stateful, reversible workflow. The Agent owns inspection and command execution; the user answers one bounded question at each decision.
 
+## Host preflight
+
+Read [references/platforms.md](references/platforms.md) before creating the session. Identify Claude, Codex, WorkBuddy, or Doubao Work; require a local-computer execution context with local shell and LAN access; locate the installed Skill root; then initialize the session with the matching `--host-platform`. A cloud computer or conversation without local command execution must stop before S0 and offer one bounded question to switch context, retry, or exit.
+
 ## Required interaction
 
 Read [references/interaction-contract.md](references/interaction-contract.md) before the first reply. Every interactive reply ends with exactly one required question and explicit options. Prefer a supported host-native form; fall back to the same numbered text menu. Never preselect a recommendation or advance past an invalid, ambiguous, missing, stale, or malformed answer.
 
-Create a session checkpoint with `../../scripts/tv-helper init-session <output>/session.json --surface <structured_form|text_menu>`. Persist each pending question before showing it and validate the submitted answer through the harness.
+Create a session checkpoint with `../../scripts/tv-helper init-session <output>/session.json --surface <structured_form|text_menu> --host-platform <claude|codex|workbuddy|doubao-work> --execution-context local_computer`. Persist each pending question before showing it and validate the submitted answer through the harness.
 
 ## Workflow
 

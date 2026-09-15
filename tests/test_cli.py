@@ -75,6 +75,50 @@ class CliTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(output)["current_state"], "S1")
 
+    def test_session_records_supported_host_and_local_execution_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Path(directory) / "session.json"
+
+            code, output, error = self.run_cli(
+                [
+                    "init-session",
+                    str(session),
+                    "--surface",
+                    "text_menu",
+                    "--host-platform",
+                    "doubao-work",
+                    "--execution-context",
+                    "local_computer",
+                ]
+            )
+
+            self.assertEqual((code, error), (0, ""))
+            saved = json.loads(output)
+            self.assertEqual(saved["host_platform"], "doubao-work")
+            self.assertEqual(saved["execution_context"], "local_computer")
+            self.assertEqual(saved["current_state"], "S0")
+
+    def test_doubao_cloud_context_is_rejected_before_session_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Path(directory) / "session.json"
+
+            code, _, error = self.run_cli(
+                [
+                    "init-session",
+                    str(session),
+                    "--surface",
+                    "text_menu",
+                    "--host-platform",
+                    "doubao-work",
+                    "--execution-context",
+                    "cloud_computer",
+                ]
+            )
+
+            self.assertEqual(code, 2)
+            self.assertIn("local_computer", error)
+            self.assertFalse(session.exists())
+
     def test_invalid_answer_returns_nonzero_without_advancing(self):
         with tempfile.TemporaryDirectory() as directory:
             session = Path(directory) / "session.json"

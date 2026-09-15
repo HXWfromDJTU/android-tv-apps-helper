@@ -21,6 +21,7 @@ class SkillContractTests(unittest.TestCase):
             "references/workflow.md",
             "references/adb-operations.md",
             "references/apk-policy.md",
+            "references/platforms.md",
         ):
             self.assertIn(reference, text)
             self.assertTrue((SKILL_DIR / reference).is_file())
@@ -44,6 +45,14 @@ class SkillContractTests(unittest.TestCase):
             "safe_exit",
         ):
             self.assertIn(concept, text)
+
+    def test_platform_reference_preserves_one_core_workflow(self):
+        path = SKILL_DIR / "references" / "platforms.md"
+        text = path.read_text(encoding="utf-8")
+        for platform in ("Claude", "Codex", "WorkBuddy", "豆包工作"):
+            self.assertIn(platform, text)
+        for invariant in ("S0–S11", "pending_question", "local_computer"):
+            self.assertIn(invariant, text)
 
 
 if __name__ == "__main__":

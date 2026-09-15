@@ -20,6 +20,18 @@ def _parser() -> argparse.ArgumentParser:
     init = subcommands.add_parser("init-session")
     init.add_argument("session", type=Path)
     init.add_argument("--surface", required=True, choices=("structured_form", "text_menu"))
+    init.add_argument(
+        "--host-platform",
+        default="codex",
+        choices=("claude", "codex", "workbuddy", "doubao-work"),
+    )
+    init.add_argument(
+        "--execution-context",
+        default="local_computer",
+        choices=("local_computer", "cloud_computer"),
+    )
+    init.add_argument("--skill-root")
+    init.add_argument("--python-command", default="python3")
 
     show = subcommands.add_parser("show-session")
     show.add_argument("session", type=Path)
@@ -89,7 +101,14 @@ def main(arguments: Sequence[str] | None = None) -> int:
     try:
         args = _parser().parse_args(arguments)
         if args.command == "init-session":
-            store = SessionStore.create(args.session, interaction_surface=args.surface)
+            store = SessionStore.create(
+                args.session,
+                interaction_surface=args.surface,
+                host_platform=args.host_platform,
+                execution_context=args.execution_context,
+                skill_root=args.skill_root,
+                python_command=args.python_command,
+            )
             _print_session(store)
         elif args.command in {"show-session", "set-question", "answer"}:
             store = SessionStore(args.session)
