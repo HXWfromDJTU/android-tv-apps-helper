@@ -18,6 +18,24 @@ from tv_helper.session import SessionStore
 
 
 class SessionStoreTests(unittest.TestCase):
+    def test_pending_action_cannot_be_cleared_overwritten_or_bypassed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(Path(directory) / "session.json", interaction_surface="text_menu")
+            store.set_pending_action({"action_id": "DOWNLOAD-ACTION", "status": "pending"})
+            with self.assertRaises((AnswerError, ValueError)):
+                store.update_fields(pending_action=None)
+            with self.assertRaises(AnswerError):
+                store.update_fields(current_state="END")
+            with self.assertRaises(AnswerError):
+                store.set_question(
+                    Question(
+                        question_id="TASK-Q1",
+                        state_id="TASK",
+                        kind="single_choice",
+                        prompt="任务？",
+                        options=(Option("one", "一个", "END"),),
+                    )
+                )
     def test_schema_two_session_migrates_without_losing_target_or_plan(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "session.json"

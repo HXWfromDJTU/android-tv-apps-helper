@@ -8,7 +8,7 @@ The model must render questions produced by `workflow-entry`, `workflow-answer`,
 
 ## Question lock
 
-Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `kind`, `prompt`, stable options, `required: true`, `attempts`, previous result, progress, blocker, remediation guidance, evidence, table rows, and optional visual/attachment data.
+Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `kind`, `prompt`, stable options, `required: true`, `attempts`, previous result, progress, blocker, remediation guidance, evidence, table rows, and optional visual/attachment data. The harness also emits `component_prompt` and `component_options`. Native hosts must use those two fields; `component_prompt` is deliberately self-contained so a modal cannot hide the user's blocker in surrounding conversation.
 
 Do not clear `pending_question` or enter the next state until the harness accepts the answer. On an invalid answer:
 

@@ -21,12 +21,14 @@ class PrecheckTests(unittest.TestCase):
                 return Result("List of devices attached\n")
             return Result("")
 
-        result = run_passive_precheck(adb_path="/tmp/adb", command_runner=runner)
+        result = run_passive_precheck(adb_path="/tmp/adb", command_runner=runner, network_probe=lambda: "192.168.31.8")
 
         self.assertEqual(result["status"], "attention")
         flattened = " ".join(" ".join(command) for command in commands)
         self.assertNotIn(" connect ", f" {flattened} ")
         self.assertNotIn("scan", flattened)
+        self.assertEqual(result["local_address"], "192.168.31.8")
+        self.assertEqual(result["scan_approval"]["scope"], ["192.168.31.0/24"])
     def test_no_devices_is_attention_and_not_proof_adb_is_disabled(self):
         result = make_precheck_result(
             adb_available=True,
@@ -39,6 +41,7 @@ class PrecheckTests(unittest.TestCase):
         self.assertEqual(result["status"], "attention")
         self.assertIn("不能证明电视未开启 ADB", result["blocker"])
         self.assertFalse(result["active_scan_performed"])
+        self.assertEqual(result["local_address"], "192.0.2.10")
 
     def test_uncertain_device_is_never_called_a_tv(self):
         label = classify_discovered_device(

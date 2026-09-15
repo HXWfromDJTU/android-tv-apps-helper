@@ -18,6 +18,7 @@ sys.path.insert(0, str(PLUGIN_SCRIPTS))
 from tv_helper.apk import (
     ApkError,
     approve_plan,
+    create_install_bundle_plan,
     create_install_plan,
     inspect_apk,
     install_approved,
@@ -42,6 +43,25 @@ class FakeRunner:
 
 
 class ApkTests(unittest.TestCase):
+    def test_approved_bundle_revalidates_and_installs_every_apk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            session = SessionStore.create(root / "session.json", interaction_surface="text_menu")
+            downloads = []
+            for app_id in ("one", "two"):
+                apk = root / f"{app_id}.apk"
+                digest = make_apk(apk)
+                downloads.append({"app_id": app_id, "path": str(apk), "sha256": digest})
+            plan = create_install_bundle_plan(serial="tv:5555", verified_downloads=downloads)
+            approve_plan(session, plan, confirmation="confirm_install")
+            runner = FakeRunner()
+
+            result = install_approved(session, runner, plan, device_state="device")
+
+            self.assertEqual([item["app_id"] for item in result], ["one", "two"])
+            self.assertTrue(all(item["plan_id"] == plan["plan_id"] for item in result))
+            self.assertEqual(len(runner.calls), 2)
+
     def test_inspection_rejects_non_zip_and_hash_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
             bad = Path(directory) / "bad.apk"

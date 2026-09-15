@@ -7,6 +7,8 @@
       "category": "network",
       "purpose": "为电视应用提供可配置的网络代理能力",
       "version": "2.11.33",
+      "expected_package": "com.github.metacubex.clash.meta",
+      "expected_version_name": "2.11.33.Meta",
       "distribution": {
         "mode": "upstream_release",
         "upstream_repository": "https://github.com/MetaCubeX/ClashMetaForAndroid",
@@ -28,6 +30,8 @@
       "category": "media",
       "purpose": "在 Android TV 上观看在线视频",
       "version": "32.10 Stable",
+      "expected_package": "org.smarttube.stable",
+      "expected_version_name": "32.10",
       "distribution": {
         "mode": "project_release",
         "upstream_repository": "https://github.com/yuliskov/SmartTube",

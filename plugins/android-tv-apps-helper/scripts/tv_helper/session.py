@@ -69,7 +69,10 @@ class SessionStore:
                 "compatibility_matches": [],
                 "selected_launcher_actions": [],
                 "selected_apps": [],
+                "installed_apps": {},
+                "emotn_runtime": {},
                 "download_confirmation": None,
+                "verified_downloads": [],
                 "wallpaper_asset": None,
                 "evidence_records": [],
                 "summary_rows": [],
@@ -103,7 +106,10 @@ class SessionStore:
             "compatibility_matches": [],
             "selected_launcher_actions": [],
             "selected_apps": [],
+            "installed_apps": {},
+            "emotn_runtime": {},
             "download_confirmation": None,
+            "verified_downloads": [],
             "wallpaper_asset": None,
             "evidence_records": [],
             "summary_rows": [],
@@ -124,6 +130,8 @@ class SessionStore:
 
     def set_question(self, question: Question) -> None:
         data = self.read()
+        if data.get("pending_action"):
+            raise AnswerError("待执行操作尚未回传证据，不能创建新问题。")
         pending = data.get("pending_question")
         if pending:
             raise AnswerError(f"问题 {pending['question_id']} 尚未回答，不能覆盖待答问题。")
@@ -180,6 +188,7 @@ class SessionStore:
         data = self.read()
         allowed = {
             "current_state",
+            "adb_path",
             "target_serial",
             "candidate_ip",
             "update_check",
@@ -190,12 +199,14 @@ class SessionStore:
             "compatibility_matches",
             "selected_launcher_actions",
             "selected_apps",
+            "installed_apps",
+            "emotn_runtime",
             "download_confirmation",
+            "verified_downloads",
             "wallpaper_asset",
             "evidence_records",
             "summary_rows",
             "finish_safety",
-            "pending_action",
         }
         unknown = set(fields) - allowed
         if unknown:
@@ -203,6 +214,9 @@ class SessionStore:
         pending = data.get("pending_question")
         if pending and "current_state" in fields and fields["current_state"] != pending["state_id"]:
             raise AnswerError("待答问题存在时不能单独改变 current_state。")
+        pending_action = data.get("pending_action")
+        if pending_action and "current_state" in fields and fields["current_state"] != pending_action["action_id"]:
+            raise AnswerError("待执行操作存在时不能单独改变 current_state。")
         data.update(fields)
         data["updated_at"] = _timestamp()
         self._write(data)

@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ROOT = REPO_ROOT / "plugins" / "android-tv-apps-helper"
 SKILL_ROOT = PLUGIN_ROOT / "skills" / "android-tv-apps-helper"
 PACKAGE_ROOT = "android-tv-apps-helper"
-SUPPORTED_PLATFORMS = ("workbuddy", "doubao-work", "claude")
+SUPPORTED_PLATFORMS = ("workbuddy", "doubao-work", "claude", "codex")
 
 
 def _manifest_version() -> str:
@@ -50,6 +50,13 @@ user-invocable: true
   version: {version}
   platforms: claude,codex,workbuddy,doubao-work
 allowed-tools: Bash
+"""
+    elif platform == "codex":
+        extra = f"""display_name: Android TV Apps Helper
+version: {version}
+author: SwainWong
+allowed-tools: Bash
+user-invocable: true
 """
     else:
         raise ValueError(f"Unsupported platform: {platform}")

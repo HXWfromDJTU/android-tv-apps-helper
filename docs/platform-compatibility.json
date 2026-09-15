@@ -16,7 +16,7 @@
   },
   "platforms": {
     "codex": {
-      "distribution": "repository_plugin",
+      "distribution": "android-tv-apps-helper-codex-v0.3.0.zip or repository_plugin",
       "artifact_validation": "passed",
       "live_installation": "pending",
       "live_invocation": "pending",

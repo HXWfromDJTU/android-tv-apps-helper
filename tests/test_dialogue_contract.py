@@ -20,6 +20,23 @@ from tv_helper.update import UpdateStateStore
 ROOT = Path(__file__).parents[1]
 
 
+def validated_file(app_id="smarttube"):
+    return {
+        "app_id": app_id,
+        "path": "/tmp/SmartTube_stable_32.10_armeabi-v7a.apk",
+        "url": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.1.0/SmartTube_stable_32.10_armeabi-v7a.apk",
+        "size": 25001470,
+        "sha256": "61e335a9816621feaa0b2aacdc17f68e652773fe33304ec091b14fac36f95025",
+        "package": "org.smarttube.stable",
+        "version_name": "32.10",
+        "version_code": 1,
+        "min_sdk": 21,
+        "abi": "armeabi-v7a",
+        "signing_sha256": "b" * 64,
+        "exit_code": 0,
+    }
+
+
 class DialogueContractTests(unittest.TestCase):
     def test_entry_prompts_for_new_stable_version_before_precheck(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -52,6 +69,11 @@ class DialogueContractTests(unittest.TestCase):
             result = engine.submit("2", question_id=question.question_id)
             self.assertEqual(result["question"].question_id, "PRECHECK-WIFI-Q1")
             self.assertTrue(UpdateStateStore(state_path).read()["snooze_until"].startswith("2026-09-16"))
+
+    def test_update_safe_exit_routes_to_shutdown_when_precheck_found_adb_device(self):
+        question = build_question("UPDATE", {"precheck": {"devices": [{"serial": "tv:5555", "state": "device"}]}})
+        safe_exit = next(option for option in question.options if option.value == "safe_exit")
+        self.assertEqual(safe_exit.next_state, "FINISH-SAFETY")
 
     def test_update_acceptance_waits_for_verified_install_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -98,7 +120,9 @@ class DialogueContractTests(unittest.TestCase):
             result = engine.submit("继续", question_id=first.question_id)
             self.assertFalse(result["accepted"])
             self.assertEqual(result["question"].question_id, first.question_id)
-            self.assertEqual(result["question"].summary_rows, first.summary_rows)
+            self.assertEqual(result["question"].summary_rows[1:], first.summary_rows)
+            self.assertEqual(result["question"].summary_rows[0]["item"], "本次回答")
+            self.assertIn("回答无效", render_question(result["question"]))
 
     def test_no_device_question_contains_steps_and_nonduplicate_choices(self):
         question = build_question("DISCOVERY-NONE", {"attempts": 3})
@@ -157,20 +181,54 @@ class DialogueContractTests(unittest.TestCase):
         self.assertIn("小米电视 MiTV-ASTP0", finish)
         self.assertIn("关闭 ADB 调试", finish)
 
+    def test_native_component_prompt_contains_progress_blocker_guidance_and_real_model(self):
+        question = build_question(
+            "WALLPAPER",
+            {
+                "device_identity": {"model": "MiTV-ASTP0"},
+                "compatibility_matches": [{"action": "wallpaper", "label": "修改壁纸", "message": "该型号大概率失败"}],
+            },
+        )
+        payload = question.to_dict()
+        self.assertIn("上一轮/当前进度", payload["component_prompt"])
+        self.assertIn("MiTV-ASTP0", payload["component_prompt"])
+        self.assertIn("该型号大概率失败", payload["component_prompt"])
+        self.assertIn("几天后", payload["component_prompt"])
+
+    def test_short_text_component_does_not_offer_fake_submit_option(self):
+        payload = build_question("DISCOVERY-IP", {}).to_dict()
+        self.assertNotIn("submit_ip", {item["value"] for item in payload["component_options"]})
+        self.assertIn("IP:", payload["component_prompt"])
+
     def test_finish_safety_rejects_claim_when_adb_still_responds(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(Path(directory) / "session.json", interaction_surface="text_menu")
             store.update_fields(
                 current_state="FINISH-SAFETY",
+                target_serial="tv:5555",
                 finish_safety={"adb_still_reachable": True},
             )
             store.set_question(build_question("FINISH-SAFETY", {}))
 
             result = WorkflowEngine(store).submit("1", question_id="FINISH-SAFETY-Q1")
-
+            self.assertTrue(result["accepted"])
+            result = WorkflowEngine(store).record_action(
+                "FINISH-CHECK",
+                status="completed",
+                evidence={
+                    "result": "ADB 仍可连接",
+                    "command": ["adb", "-s", "tv:5555", "get-state"],
+                    "check_performed": True,
+                    "adb_still_reachable": True,
+                },
+            )
             self.assertFalse(result["accepted"])
             self.assertEqual(result["question"].question_id, "FINISH-SAFETY-Q1")
             self.assertIn("仍可连接", result["question"].blocker_summary)
+
+            retry = WorkflowEngine(store).submit("1", question_id="FINISH-SAFETY-Q1")
+            self.assertTrue(retry["accepted"])
+            self.assertEqual(retry["action_required"]["action_id"], "FINISH-CHECK")
 
     def test_download_confirmation_waits_for_action_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -191,7 +249,7 @@ class DialogueContractTests(unittest.TestCase):
             next_result = engine.record_action(
                 "DOWNLOAD-ACTION",
                 status="completed",
-                evidence={"result": "2 files validated"},
+                evidence={"result": "1 file validated", "files": [validated_file()]},
             )
             self.assertEqual(next_result["question"].question_id, "DOWNLOAD-VERIFY-Q1")
 
@@ -203,7 +261,7 @@ class DialogueContractTests(unittest.TestCase):
             engine = WorkflowEngine(store)
             engine.submit("1", question_id="DOWNLOAD-CONFIRM-Q1")
             result = engine.record_action(
-                "DOWNLOAD-ACTION", status="failed", evidence={"result": "HTTP 503"}
+                "DOWNLOAD-ACTION", status="failed", evidence={"result": "HTTP 503", "error": "HTTP 503"}
             )
             self.assertFalse(result["accepted"])
             self.assertEqual(result["question"].question_id, "DOWNLOAD-CONFIRM-Q1")
@@ -222,11 +280,35 @@ class DialogueContractTests(unittest.TestCase):
             self.assertEqual(store.read()["wallpaper_asset"]["kind"], "default")
             self.assertIn("默认壁纸", render_question(result["question"]))
 
+    def test_default_wallpaper_from_first_wallpaper_question_clears_stale_custom_asset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(Path(directory) / "session.json", interaction_surface="text_menu")
+            store.update_fields(
+                current_state="WALLPAPER",
+                wallpaper_asset={"kind": "custom", "media_type": "image/png", "sha256": "deadbeef"},
+            )
+            store.set_question(build_question("WALLPAPER", store.read()))
+            result = WorkflowEngine(store).submit("2", question_id="WALLPAPER-Q1")
+            self.assertEqual(store.read()["wallpaper_asset"]["kind"], "default")
+            self.assertIn("默认壁纸", render_question(result["question"]))
+
     def test_home_risk_choice_requires_separate_execution_approval(self):
         question = build_question("LAUNCHER-RISK", {})
         home = next(option for option in question.options if option.value == "home_only")
         self.assertEqual(home.next_state, "HOME-CONFIRM")
-        approval = build_question("HOME-CONFIRM", {"compatibility_matches": ["home_key"]})
+        approval = build_question(
+            "HOME-CONFIRM",
+            {
+                "compatibility_matches": [
+                    {
+                        "action": "home_key",
+                        "label": "修改 Home 键默认桌面",
+                        "message": "大概率无法替换成功",
+                        "evidence": "兼容性记录",
+                    }
+                ]
+            },
+        )
         self.assertEqual(approval.kind, "explicit_consent")
         self.assertEqual(approval.options[0].next_state, "HOME-ACTION")
 
@@ -250,7 +332,15 @@ class DialogueContractTests(unittest.TestCase):
             result = engine.record_action(
                 "PASSIVE-DISCOVERY-ACTION",
                 status="completed",
-                evidence={"result": "0 个候选设备", "devices": [], "rows": []},
+                evidence={
+                    "result": "0 个候选设备",
+                    "commands": [["adb", "version"], ["adb", "devices", "-l"]],
+                    "precheck": {
+                        "devices": [],
+                        "rows": [{"status": "attention", "item": "设备", "result": "0 台"}],
+                        "active_scan_performed": False,
+                    },
+                },
             )
             question = result["question"]
             for answer in ("2", "IP: 192.0.2.20", "1"):
@@ -261,7 +351,14 @@ class DialogueContractTests(unittest.TestCase):
             result = engine.record_action(
                 "CONNECT-ACTION",
                 status="completed",
-                evidence={"result": "ADB 已连接", "target_serial": "192.0.2.20:5555"},
+                evidence={
+                    "result": "ADB 已连接",
+                    "target_serial": "192.0.2.20:5555",
+                    "endpoint": "192.0.2.20",
+                    "command": ["adb", "connect", "192.0.2.20"],
+                    "exit_code": 0,
+                    "output": "connected",
+                },
             )
             question = result["question"]
             result = engine.submit("1", question_id=question.question_id)
@@ -269,7 +366,20 @@ class DialogueContractTests(unittest.TestCase):
             result = engine.record_action(
                 "INSPECT-ACTION",
                 status="completed",
-                evidence={"result": "只读盘点完成", "device_identity": {"model": "TV-1"}},
+                evidence={
+                    "result": "只读盘点完成",
+                    "target_serial": "192.0.2.20:5555",
+                    "commands": [["adb", "-s", "192.0.2.20:5555", "shell", "getprop"]],
+                    "exit_code": 0,
+                    "device_identity": {
+                        "manufacturer": "Example",
+                        "model": "TV-1",
+                        "android_version": "9",
+                        "sdk": "28",
+                        "abi": "armeabi-v7a",
+                    },
+                    "installed_apps": {},
+                },
             )
             question = result["question"]
             result = engine.submit("1", question_id=question.question_id)

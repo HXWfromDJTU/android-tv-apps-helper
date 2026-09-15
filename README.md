@@ -24,13 +24,24 @@
 | WorkBuddy | `android-tv-apps-helper-workbuddy-v0.3.0.zip` |
 | 豆包工作 | `android-tv-apps-helper-doubao-work-v0.3.0.zip` |
 | Claude Desktop / Code | `android-tv-apps-helper-claude-v0.3.0.zip` |
-| Codex | 本 GitHub 仓库中的 repository plugin |
+| Codex | `android-tv-apps-helper-codex-v0.3.0.zip`，或本仓库 repository plugin |
 
 所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.0 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.0)。安装前可用：
 
 ```sh
 (cd 下载目录 && shasum -a 256 -c SHA256SUMS)
 ```
+
+### 使用前准备
+
+| 状态 | 需要准备 | 说明 |
+|---|---|---|
+| ✅ | 本地电脑 Agent | 电脑必须能访问电视所在局域网；云电脑不适用 |
+| ⏳ | 电脑与电视连接同一可信 Wi-Fi | Skill 首轮会读取本机 IPv4，并列出 `adb devices -l` 的被动结果 |
+| ⏳ | Android 官方 Platform-Tools | 若未找到 ADB，问题卡会给出[官方下载页](https://developer.android.com/tools/releases/platform-tools)和路径验证步骤 |
+| ⏳ | 在电视上开启 ADB/网络调试 | 通用步骤：设置 → 系统/设备偏好设置 → 关于 → 连续选择版本约 7 次 → 开发者选项 → 开启 ADB/网络调试 |
+
+任务结束时，Skill 会根据已识别型号提醒关闭 ADB/无线调试和开发者模式，并做一次只读冲突复核。
 
 ## WorkBuddy 安装与使用
 
@@ -47,13 +58,13 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/a
 安装完成后，请告诉我技能名称和版本；先不要连接或修改电视。
 ```
 
-如果已有旧版，先发送：
+正常更新直接发送安装提示词，Skill 会先校验新包再切换。只有需要“干净重装”时，才先下载新 ZIP 和 `SHA256SUMS` 完成校验，然后发送：
 
 ```text
 请只删除当前已安装的 Android TV Apps Helper Skill，不要删除其他 Skill。删除后告诉我结果。
 ```
 
-删除确认后，再发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.0`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个 WorkBuddy ZIP。
+删除确认后，立即发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.0`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个已校验 WorkBuddy ZIP。
 
 ### 2. 开始使用
 
@@ -85,6 +96,8 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/a
 ## Codex 安装与使用
 
 ### 1. 从 GitHub 获取 repository plugin
+
+可让 Codex 从 Release 的 `android-tv-apps-helper-codex-v0.3.0.zip` 安装个人 Skill；开发者也可使用完整 repository plugin：
 
 ```sh
 git clone https://github.com/HXWfromDJTU/android-tv-apps-helper.git
@@ -130,6 +143,10 @@ flowchart TD
     B -- 否 --> P
 
     P --> W[PRECHECK-WIFI-Q1<br/>表格列出 ADB/网络/候选设备]
+    W -- 未找到 ADB --> AS[ADB-SETUP-Q1<br/>官方 Platform-Tools 链接或已有绝对路径]
+    AS -- 提交路径 --> AV[ADB-VALIDATE-ACTION<br/>只运行 version 与 devices -l]
+    AV -- 成功 --> W
+    AV -- 失败 --> AS
     W -- 同一 Wi-Fi --> D[PRECHECK-ADB-Q1<br/>确认 ADB/无线调试]
     W -- 不同或不确定 --> W
     D -- 未开启/找不到 --> D
@@ -157,7 +174,9 @@ flowchart TD
     DC -- 确认下载 --> DA[下载+来源+SHA-256+包体身份校验]
     DA -- 失败 --> DC
     DA -- 通过 --> DV[DOWNLOAD-VERIFY-Q1]
-    DV --> PL[INSTALL-PLAN-Q1<br/>方案 01/02… + 影响 + 恢复]
+    DV --> PP[PREPARE-INSTALL-PLAN-ACTION<br/>绑定已验证文件/目标电视/计划摘要]
+    PP -- 证据一致 --> PL[INSTALL-PLAN-Q1<br/>友好名称 + 影响 + 恢复]
+    PP -- 失败 --> DV
     PL -- 独立批准安装 --> IA[逐项安装并提交证据]
     IA -- 失败 --> PL
     IA -- 完成 --> V[VERIFY-Q1<br/>画面/声音/遥控现场验收]
@@ -165,11 +184,13 @@ flowchart TD
     M -- 检查当贝官方来源 --> DB[DANGBEI-SOURCE-Q1]
     DB -- 重试官网 --> DBA[固定官网/CDN+完整身份校验]
     DBA -- 失败 --> DB
-    DBA -- 通过 --> AP
+    DBA -- 通过 --> DV
     DB -- 查看官网 --> DB
     DB -- 跳过 --> AP
 
-    M -- 设置电视默认桌面 --> LR[LAUNCHER-RISK-Q1<br/>型号+壁纸/Home 独立风险]
+    M -- 设置电视默认桌面 --> EL[EMOTN-LAUNCH-ACTION<br/>固定包名并验证位于前台]
+    EL -- 成功 --> LR[LAUNCHER-RISK-Q1<br/>型号+壁纸/Home 独立风险]
+    EL -- 失败 --> M
     LR -- Home 或两者 --> HC[HOME-CONFIRM-Q1<br/>独立执行批准]
     HC -- 批准 --> HA[尝试修改 Home 并提交证据]
     HA -- 失败 --> HC

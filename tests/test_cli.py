@@ -28,54 +28,21 @@ class CliTests(unittest.TestCase):
             exit_code = main(arguments)
         return exit_code, stdout.getvalue(), stderr.getvalue()
 
-    def test_session_question_round_trip_emits_json(self):
+    def test_session_init_and_show_emit_json_without_raw_state_mutators(self):
         with tempfile.TemporaryDirectory() as directory:
             session = Path(directory) / "session.json"
-            question = Path(directory) / "question.json"
-            question.write_text(
-                json.dumps(
-                    {
-                        "question_id": "S0-Q1",
-                        "state_id": "S0",
-                        "kind": "single_choice",
-                        "prompt": "开始？",
-                        "options": [
-                            {
-                                "value": "start_check",
-                                "label": "开始检查",
-                                "next_state": "S1",
-                            }
-                        ],
-                    },
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
-            )
-
             code, output, _ = self.run_cli(
                 ["init-session", str(session), "--surface", "text_menu"]
             )
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(output)["current_state"], "S0")
 
-            code, output, _ = self.run_cli(
-                ["set-question", str(session), "--question", str(question)]
-            )
+            code, output, _ = self.run_cli(["show-session", str(session)])
             self.assertEqual(code, 0)
-            self.assertEqual(json.loads(output)["pending_question"]["question_id"], "S0-Q1")
+            self.assertEqual(json.loads(output)["current_state"], "S0")
 
-            code, output, _ = self.run_cli(
-                [
-                    "answer",
-                    str(session),
-                    "--question-id",
-                    "S0-Q1",
-                    "--value",
-                    "1",
-                ]
-            )
-            self.assertEqual(code, 0)
-            self.assertEqual(json.loads(output)["current_state"], "S1")
+            with self.assertRaises(SystemExit):
+                self.run_cli(["set-question", str(session)])
 
     def test_workflow_commands_generate_and_retain_the_fixed_first_question(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -134,7 +101,24 @@ class CliTests(unittest.TestCase):
             )
             self.assertEqual((code, error), (0, ""))
             self.assertEqual(json.loads(output)["action_required"]["action_id"], "DOWNLOAD-ACTION")
-            evidence.write_text(json.dumps({"result": "下载和身份校验通过"}), encoding="utf-8")
+            evidence.write_text(
+                json.dumps(
+                    {
+                        "result": "下载和身份校验通过",
+                        "files": [
+                            {
+                                "app_id": "smarttube", "path": "/tmp/smarttube.apk",
+                                "url": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.1.0/SmartTube_stable_32.10_armeabi-v7a.apk",
+                                "size": 25001470, "sha256": "61e335a9816621feaa0b2aacdc17f68e652773fe33304ec091b14fac36f95025",
+                                "package": "org.smarttube.stable", "version_name": "32.10",
+                                "version_code": 1, "min_sdk": 21,
+                                "abi": "armeabi-v7a", "signing_sha256": "b" * 64, "exit_code": 0,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
             code, output, error = self.run_cli(
                 [
                     "workflow-action-result", str(session), "--action-id", "DOWNLOAD-ACTION",
@@ -213,38 +197,14 @@ class CliTests(unittest.TestCase):
             self.assertIn("local_computer", error)
             self.assertFalse(session.exists())
 
-    def test_invalid_answer_returns_nonzero_without_advancing(self):
+    def test_raw_answer_command_is_not_exposed(self):
         with tempfile.TemporaryDirectory() as directory:
             session = Path(directory) / "session.json"
-            question = Path(directory) / "question.json"
-            question.write_text(
-                json.dumps(
-                    {
-                        "question_id": "S0-Q1",
-                        "state_id": "S0",
-                        "kind": "single_choice",
-                        "prompt": "开始？",
-                        "options": [
-                            {
-                                "value": "start_check",
-                                "label": "开始检查",
-                                "next_state": "S1",
-                            }
-                        ],
-                    },
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
-            )
             self.run_cli(["init-session", str(session), "--surface", "text_menu"])
-            self.run_cli(["set-question", str(session), "--question", str(question)])
-
-            code, _, error = self.run_cli(
-                ["answer", str(session), "--question-id", "S0-Q1", "--value", "随便"]
-            )
-
-            self.assertEqual(code, 2)
-            self.assertIn("明确", error)
+            with self.assertRaises(SystemExit):
+                self.run_cli(
+                    ["answer", str(session), "--question-id", "S0-Q1", "--value", "随便"]
+                )
             self.assertEqual(
                 json.loads(session.read_text(encoding="utf-8"))["current_state"],
                 "S0",
@@ -282,6 +242,11 @@ class CliTests(unittest.TestCase):
                 archive.writestr("AndroidManifest.xml", b"manifest")
             digest = hashlib.sha256(apk.read_bytes()).hexdigest()
             self.run_cli(["init-session", str(session), "--surface", "text_menu"])
+            store = SessionStore(session)
+            store.update_fields(
+                target_serial="tv:5555",
+                verified_downloads=[{"app_id": "sample", "path": str(apk), "sha256": digest}],
+            )
 
             code, output, error = self.run_cli(
                 [
@@ -314,7 +279,7 @@ class CliTests(unittest.TestCase):
             )
             self.assertEqual(code, 2)
             self.assertIn("confirm_install", error)
-            self.assertIsNone(json.loads(session.read_text())["approved_plan"])
+            self.assertEqual(json.loads(session.read_text())["approved_plan"]["status"], "planned")
 
             code, output, error = self.run_cli(
                 [

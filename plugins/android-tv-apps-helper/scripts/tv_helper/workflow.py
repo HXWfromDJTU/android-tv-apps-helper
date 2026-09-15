@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 from pathlib import Path
+import json
 
 from .guides import validate_wallpaper
+from .evidence import validate_action_evidence
 from .presentation import InteractionFrame, SummaryRow, render_markdown
 from .questions import AnswerError, Option, Question, validate_answer
 from .session import SessionStore
@@ -19,10 +21,16 @@ ADB_GUIDANCE = (
     "在电视网络设置中查看电视 IP 地址。",
     "连接时只在电视上允许当前可信电脑的 RSA 授权。",
 )
+ADB_CLOSE_GUIDANCE = (
+    "打开电视设置，进入‘系统/设备偏好设置 → 开发者选项’。",
+    "关闭‘ADB 调试/网络调试/无线调试’。",
+    "如果存在‘开发者选项’总开关，再将它关闭。",
+)
 
 WORKFLOW_STATES = {
     "UPDATE",
     "PRECHECK_WIFI",
+    "ADB-SETUP",
     "PRECHECK_ADB",
     "DISCOVERY-NONE",
     "DISCOVERY-IP",
@@ -47,20 +55,54 @@ WORKFLOW_STATES = {
 }
 ACTION_STATES = {
     "UPDATE-ACTION",
+    "ADB-VALIDATE-ACTION",
     "PASSIVE-DISCOVERY-ACTION",
     "CONNECT-ACTION",
     "SCAN-ACTION",
     "INSPECT-ACTION",
+    "EMOTN-LAUNCH-ACTION",
     "DANGBEI-ACTION",
     "DANGBEI-PAGE-ACTION",
     "DIAGNOSE-ACTION",
     "DOWNLOAD-ACTION",
+    "PREPARE-INSTALL-PLAN-ACTION",
     "INSTALL-ACTION",
     "HOME-ACTION",
     "WALLPAPER-ACTION",
     "FINISH-CHECK",
 }
 TERMINAL_STATES = {"END", "END-WARNING", "END-NO-ADB"}
+
+EMOTN_PACKAGE = "com.oversea.aslauncher"
+
+
+def _load_catalog() -> dict[str, Any]:
+    root = Path(__file__).parents[2]
+    for path in (root / "catalog" / "apps.json", root / "references" / "apps.json"):
+        if path.is_file():
+            return json.loads(path.read_text(encoding="utf-8"))
+    raise ValueError("应用目录缺失，不能创建下载或安装动作。")
+
+
+def _download_expectations(selected: tuple[str, ...]) -> list[dict[str, Any]]:
+    by_id = {str(app["id"]): app for app in _load_catalog().get("apps", ())}
+    expectations: list[dict[str, Any]] = []
+    for app_id in selected:
+        app = by_id.get(app_id)
+        if not app or len(app.get("assets", ())) != 1:
+            raise ValueError(f"{app_id} 没有唯一且已验证的下载文件。")
+        asset = app["assets"][0]
+        expectations.append(
+            {
+                "app_id": app_id,
+                "url": asset["url"],
+                "size": asset["size"],
+                "sha256": asset["sha256"],
+                "package": app.get("expected_package"),
+                "version_name": app.get("expected_version_name"),
+            }
+        )
+    return expectations
 
 
 def _safe_exit(
@@ -75,6 +117,7 @@ def _safe_exit(
 def build_question(state: str, context: dict[str, Any]) -> Question:
     if state == "UPDATE":
         update_check = context.get("update_check") or {}
+        update_exit = "FINISH-SAFETY" if (context.get("precheck") or {}).get("devices") else "END-NO-ADB"
         current = str(context.get("installed_version") or update_check.get("installed_version") or "当前版本")
         latest = str(context.get("latest_version") or update_check.get("latest_version") or "最新版本")
         return Question(
@@ -86,7 +129,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
                 Option("update", "更新后继续", "UPDATE-ACTION", "先下载并校验正确平台包，安装成功后再切换", True),
                 Option("decline_24h", "暂不更新，24 小时内不再提醒", "PRECHECK_WIFI", "期间出现其他新版也不提示"),
                 Option("release_notes", "查看完整更新说明", "UPDATE", "保持当前版本，不开始设备操作"),
-                _safe_exit(),
+                _safe_exit(update_exit),
             ),
             previous_result_summary=f"已安装 {current}；官方稳定版为 {latest}。",
             blocker_summary="更新不会在新包完成平台、Skill ID、版本和 SHA-256 校验前删除当前可用版本。",
@@ -96,22 +139,68 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
         )
     if state == "PRECHECK_WIFI":
         precheck = context.get("precheck", {})
+        safety_exit = "FINISH-SAFETY" if precheck.get("devices") else "END-NO-ADB"
+        adb_missing = any(
+            row.get("item") == "ADB 工具" and row.get("result") == "未找到"
+            for row in precheck.get("rows", ())
+        )
+        options = [
+            Option("same_wifi", "已连接同一个 Wi-Fi", "PRECHECK_ADB", "继续核对电视调试权限", not adb_missing),
+            Option("different_wifi", "目前不是同一个 Wi-Fi", "PRECHECK_WIFI", "先调整网络后再检查"),
+            Option("unsure_wifi", "我不确定", "PRECHECK_WIFI", "查看电视和电脑的网络名称"),
+        ]
+        if adb_missing:
+            options.insert(
+                0,
+                Option("configure_adb", "安装或指定 ADB 工具", "ADB-SETUP", "使用 Android 官方 Platform-Tools", True),
+            )
+        options.append(_safe_exit(safety_exit))
         return Question(
             question_id="PRECHECK-WIFI-Q1",
             state_id=state,
             kind="single_choice",
             prompt="请确认电脑和电视是否连接到同一个 Wi-Fi？",
-            options=(
-                Option("same_wifi", "已连接同一个 Wi-Fi", "PRECHECK_ADB", "继续核对电视调试权限", True),
-                Option("different_wifi", "目前不是同一个 Wi-Fi", "PRECHECK_WIFI", "先调整网络后再检查"),
-                Option("unsure_wifi", "我不确定", "PRECHECK_WIFI", "查看电视和电脑的网络名称"),
-                _safe_exit(),
-            ),
+            options=tuple(options),
             previous_result_summary="已完成自动、只读、被动预检查。",
-            blocker_summary=str(precheck.get("blocker", "")),
-            remediation_guidance=ADB_GUIDANCE[:1],
+            blocker_summary=(
+                "本机未找到 ADB 工具；在完成安装或指定路径前不能发现电视。"
+                if adb_missing else str(precheck.get("blocker", ""))
+            ),
+            remediation_guidance=(
+                (
+                    "从 Android Developers 官方 Platform-Tools 页面下载与你电脑系统匹配的版本。",
+                    "解压后在下一题填写 adb 可执行文件的绝对路径；不会运行未校验的第三方安装器。",
+                    "官方页面：https://developer.android.com/tools/releases/platform-tools",
+                )
+                if adb_missing else ADB_GUIDANCE[:1]
+            ),
             summary_rows=tuple(precheck.get("rows", ())),
             display_name="确认同一 Wi-Fi",
+        )
+    if state == "ADB-SETUP":
+        return Question(
+            question_id="ADB-SETUP-Q1",
+            state_id=state,
+            kind="short_text",
+            prompt="请填写 Android 官方 Platform-Tools 中 adb 可执行文件的绝对路径。",
+            options=(
+                Option("submit_adb", "提交并验证 ADB 路径", "ADB-VALIDATE-ACTION"),
+                Option("show_official_guide", "再次查看 Android 官方安装页面", "ADB-SETUP"),
+                Option("back", "返回预检查结果", "PRECHECK_WIFI"),
+                _safe_exit(),
+            ),
+            input_prefix="ADB:",
+            input_format="absolute_path",
+            previous_result_summary="自动预检查没有找到可用的 ADB。",
+            blocker_summary="只接受绝对路径；验证仅运行 adb version 和 adb devices -l。",
+            remediation_guidance=(
+                "官方下载：https://developer.android.com/tools/releases/platform-tools",
+                "回答示例：ADB: /Users/me/Downloads/platform-tools/adb",
+            ),
+            summary_rows=(
+                {"status": "failed", "item": "ADB 工具", "result": "未找到"},
+                {"status": "pending", "item": "官方工具路径", "result": "等待填写"},
+            ),
         )
     if state == "PRECHECK_ADB":
         return Question(
@@ -193,19 +282,30 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             ),
         )
     if state == "DISCOVERY-SCAN":
+        approval = (context.get("precheck") or {}).get("scan_approval") or {}
+        scope = tuple(approval.get("scope", ()))
+        ports = tuple(approval.get("ports", ()))
+        ready = bool(scope and ports)
         return Question(
             question_id="DISCOVERY-SCAN-Q1",
             state_id=state,
             kind="explicit_consent",
             prompt="是否按显示范围执行一次有限的电视 ADB 端口扫描？",
             options=(
-                Option("approve_bounded_scan", "批准显示范围内的有限扫描", "SCAN-ACTION", "只扫描列出的子网和端口", True),
+                Option(
+                    "approve_bounded_scan", "批准显示范围内的有限扫描", "SCAN-ACTION",
+                    "只扫描列出的子网和端口", True, enabled=ready,
+                    unavailable_reason="未读取到可信的私有 IPv4 子网，不能执行扫描。",
+                ),
                 Option("back", "返回被动发现", "DISCOVERY-NONE"),
                 _safe_exit("FINISH-SAFETY"),
             ),
             previous_result_summary="被动发现没有结果；尚未执行主动扫描。",
             blocker_summary="范围、端口和目的必须先在表格中列明；未知范围不能批准。",
-            summary_rows=tuple(context.get("scan_rows", ({"status": "pending", "item": "有限扫描", "result": "等待范围确认"},))),
+            summary_rows=(
+                {"status": "pending" if ready else "failed", "item": "扫描范围", "result": "、".join(scope) if scope else "无法确定"},
+                {"status": "pending" if ready else "failed", "item": "扫描端口", "result": "、".join(map(str, ports)) if ports else "无法确定"},
+            ),
         )
     if state == "TARGET-SELECT":
         devices = tuple((context.get("precheck") or {}).get("devices", ()))
@@ -255,6 +355,8 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             summary_rows=tuple(context.get("summary_rows", ({"status": "attention", "item": "目标候选", "result": "等待设备身份"},))),
         )
     if state == "TASK":
+        installed = context.get("installed_apps") or {}
+        emotn_installed = bool(installed.get("emotn-ui"))
         return Question(
             question_id="TASK-Q1",
             state_id=state,
@@ -263,7 +365,14 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             options=(
                 Option("recommended_apps", "查看并选择推荐应用", "APPS", "显示应用用途、版本和可用状态", True),
                 Option("dangbei_source", "检查当贝市场官方来源", "DANGBEI-SOURCE", "自动重试官网来源，不需要用户找 APK"),
-                Option("launcher_setup", "设置电视默认桌面", "LAUNCHER-RISK", "配置 Emotn UI 和 Home 键"),
+                Option(
+                    "launcher_setup",
+                    "设置电视默认桌面",
+                    "EMOTN-LAUNCH-ACTION",
+                    "先启动并验证 Emotn UI，再配置 Home 键和壁纸",
+                    enabled=emotn_installed,
+                    unavailable_reason="未验证 Emotn UI 已安装；请先完成应用安装流程。",
+                ),
                 Option("diagnose_app", "检查应用问题", "DIAGNOSE", "排查启动、画面、声音或遥控问题"),
                 _safe_exit(
                     "FINISH-SAFETY",
@@ -281,6 +390,10 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             ("smarttube", "SmartTube", "32.10 Stable", "在线视频播放器", True, "来自本项目已核验 Release 资源"),
             ("dangbei-market", "当贝市场", "6.0.7", "电视应用市场", False, "官方地址已记录，包体身份待项目维护者验证；可返回任务菜单检查官方来源"),
             ("emotn-ui", "Emotn UI", "1.1.0.1", "电视桌面和壁纸", False, "当前没有可公开分发的已验证安装源；已安装设备仍可进入桌面设置"),
+            ("jiashitong", "佳视通", "1.0.0", "观看电视直播内容", False, "安装文件和公开分发许可尚未核验"),
+            ("chengfeng-tv", "乘风TV", "1.0.3", "观看电视直播内容", False, "安装文件和公开分发许可尚未核验"),
+            ("polang-tv", "魄狼TV", "1.0.7", "观看电视直播内容", False, "安装文件和公开分发许可尚未核验"),
+            ("nfgc-tv", "奈飞工厂TV", "9.0.1 test", "浏览和播放影视内容", False, "发布者身份和公开分发许可尚未核验"),
         )
         options = []
         rows = []
@@ -300,7 +413,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             )
             rows.append(
                 {
-                    "status": "completed" if enabled else "skipped",
+                    "status": "completed" if current == version else ("pending" if enabled else "attention"),
                     "item": name,
                     "result": availability,
                     "evidence": purpose,
@@ -349,7 +462,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             kind="single_choice",
             prompt="下载与文件校验完成后，下一步怎么处理？",
             options=(
-                Option("review_install_plan", "查看安装计划", "INSTALL-PLAN", "尚不安装", True),
+                Option("review_install_plan", "生成并查看安装计划", "PREPARE-INSTALL-PLAN-ACTION", "读取已验证文件并绑定当前电视，尚不安装", True),
                 Option("back", "返回应用列表", "APPS"),
                 _safe_exit("FINISH-SAFETY"),
             ),
@@ -357,19 +470,47 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             summary_rows=tuple(context.get("download_rows", ({"status": "pending", "item": "下载校验", "result": "等待执行"},))),
         )
     if state == "INSTALL-PLAN":
+        plan = context.get("approved_plan") or {}
+        ready = plan.get("status") in {"planned", "approved"}
+        catalog_names = {
+            str(app.get("id")): f"{app.get('name')} {app.get('version')}"
+            for app in _load_catalog().get("apps", ())
+        }
+        if plan.get("action") == "install_bundle":
+            plan_names = "、".join(catalog_names.get(str(item.get("app_id")), "已验证应用") for item in plan.get("installations", ()))
+            plan_digest = "计划与 APK 摘要已绑定"
+        else:
+            plan_names = catalog_names.get(str(plan.get("app_id")), "已验证应用")
+            plan_digest = "计划与 APK 摘要已绑定" if ready else ""
+        plan_rows = (
+            {
+                "status": "pending" if ready else "failed",
+                "item": "方案 01：安装应用",
+                "result": (
+                    f"{plan_names} → {plan.get('serial')}"
+                    if ready else "尚未从已验证下载生成计划"
+                ),
+                "evidence": plan_digest,
+            },
+        )
         return Question(
             question_id="INSTALL-PLAN-Q1",
             state_id=state,
             kind="explicit_consent",
             prompt="是否批准显示的安装计划？",
             options=(
-                Option("approve_install", "批准安装计划", "INSTALL-ACTION", "只执行表格内绑定设备和摘要的安装", True),
+                Option(
+                    "approve_install", "批准安装计划", "INSTALL-ACTION",
+                    "只执行表格内绑定设备和摘要的安装", True,
+                    enabled=ready,
+                    unavailable_reason="请先让 Agent 从已验证下载文件生成安装计划。",
+                ),
                 Option("back", "返回应用列表", "APPS"),
                 _safe_exit("FINISH-SAFETY"),
             ),
             previous_result_summary="已生成友好名称和不可变内部计划。",
             blocker_summary="设备、摘要、命令或风险变化会使批准失效。",
-            summary_rows=tuple(context.get("plan_rows", ({"status": "pending", "item": "方案 01：安装应用", "result": "等待批准"},))),
+            summary_rows=tuple(context.get("plan_rows", plan_rows)),
         )
     if state == "VERIFY":
         return Question(
@@ -442,17 +583,23 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             previous_result_summary=f"已识别目标：{name}。",
             blocker_summary="没有匹配证据时只能标记为未知；当前系统可能限制 Home 键或稍后恢复壁纸。",
             remediation_guidance=("原厂桌面不会被卸载、禁用或清除数据。", "风险确认不是执行批准。"),
-            summary_rows=risk_rows or tuple(
-                context.get(
-                    "compatibility_rows",
-                    (
-                        {"status": "attention", "item": "修改壁纸", "result": "兼容性未知，可能失败或被重置"},
-                        {"status": "attention", "item": "修改 Home 键", "result": "兼容性未知，可能失败"},
-                    ),
-                )
+            summary_rows=(
+                {"status": "completed", "item": "目标电视", "result": name},
+                *(risk_rows or tuple(
+                    context.get(
+                        "compatibility_rows",
+                        (
+                            {"status": "attention", "item": "修改壁纸", "result": "兼容性未知，可能失败或被重置"},
+                            {"status": "attention", "item": "修改 Home 键", "result": "兼容性未知，可能失败"},
+                        ),
+                    )
+                )),
             ),
         )
     if state == "HOME-CONFIRM":
+        identity = context.get("device_identity") or {}
+        name = str(identity.get("display_name") or identity.get("model") or "当前电视（型号待核实）")
+        risks = tuple(context.get("compatibility_matches", ()))
         return Question(
             question_id="HOME-CONFIRM-Q1",
             state_id=state,
@@ -466,6 +613,16 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             previous_result_summary="已阅读当前型号的 Home 键兼容性风险；尚未执行修改。",
             blocker_summary="风险确认不等于执行批准；失败后不会禁用或卸载原厂桌面。",
             summary_rows=(
+                {"status": "completed", "item": "目标电视", "result": name},
+                *(tuple(
+                    {
+                        "status": "attention",
+                        "item": row.get("label", "修改 Home 键"),
+                        "result": row.get("message", "大概率无法替换成功"),
+                        "evidence": row.get("evidence", ""),
+                    }
+                    for row in risks if row.get("action") == "home_key"
+                ) or ({"status": "attention", "item": "修改 Home 键", "result": "当前型号兼容性未知，大概率无法替换成功"},)),
                 {"status": "pending", "item": "Home 键修改", "result": "等待独立执行批准"},
             ),
         )
@@ -489,7 +646,13 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             ),
         )
     if state == "WALLPAPER":
-        device_name = str(context.get("device_name", "当前电视"))
+        identity = context.get("device_identity") or {}
+        device_name = str(context.get("device_name") or identity.get("display_name") or identity.get("model") or "当前电视（型号待核实）")
+        risks = tuple(context.get("compatibility_matches", ()))
+        wallpaper_risks = tuple(
+            {"status": "attention", "item": row.get("label", "修改壁纸"), "result": row.get("message", "大概率无法替换成功"), "evidence": row.get("evidence", "")}
+            for row in risks if row.get("action") == "wallpaper"
+        )
         return Question(
             question_id="WALLPAPER-Q1",
             state_id=state,
@@ -505,10 +668,19 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             blocker_summary="自定义壁纸可能在几天后、重启、系统升级或桌面升级后被电视系统重置。",
             remediation_guidance=("上传失败不会自动改用默认壁纸。", "应用壁纸前还会再次确认。"),
             summary_rows=(
+                {"status": "completed", "item": "目标电视", "result": device_name},
+                *(wallpaper_risks or ({"status": "attention", "item": "修改壁纸", "result": "当前型号兼容性未知，可能失败"},)),
                 {"status": "attention", "item": "壁纸持久性", "result": "厂商系统可能重置"},
             ),
         )
     if state == "WALLPAPER-UPLOAD":
+        identity = context.get("device_identity") or {}
+        device_name = str(identity.get("display_name") or identity.get("model") or "当前电视（型号待核实）")
+        risks = tuple(context.get("compatibility_matches", ()))
+        wallpaper_risks = tuple(
+            {"status": "attention", "item": row.get("label", "修改壁纸"), "result": row.get("message", "大概率无法替换成功"), "evidence": row.get("evidence", "")}
+            for row in risks if row.get("action") == "wallpaper"
+        )
         return Question(
             question_id="WALLPAPER-UPLOAD-Q1",
             state_id=state,
@@ -523,16 +695,26 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             input_prefix="图片:",
             input_format="absolute_path",
             previous_result_summary="已选择自定义壁纸；尚未读取或传输图片。",
-            blocker_summary="缺失、格式错误、超过 20 MB 或传输失败都会停留在本题，不会自动使用默认壁纸。",
+            blocker_summary="缺失、格式错误、超过 20 MB 或传输失败都会停留在本题；即使成功，厂商系统也可能在几天后、重启或升级后重置壁纸。",
             remediation_guidance=("支持 PNG、JPEG、WebP，最大 20 MB；推荐横屏 16:9。", "回答示例：图片: /Users/me/Pictures/tv.jpg"),
             summary_rows=(
+                {"status": "completed", "item": "目标电视", "result": device_name},
+                *(wallpaper_risks or ({"status": "attention", "item": "修改壁纸", "result": "当前型号兼容性未知，可能失败"},)),
                 {"status": "pending", "item": "壁纸图片", "result": "等待上传"},
+                {"status": "attention", "item": "壁纸持久性", "result": "几天后、重启或升级后可能被重置"},
             ),
         )
     if state == "WALLPAPER-CONFIRM":
         asset = context.get("wallpaper_asset") or {"media_type": "默认壁纸", "size": 0}
+        identity = context.get("device_identity") or {}
+        device_name = str(identity.get("display_name") or identity.get("model") or "当前电视（型号待核实）")
         is_default = asset.get("kind") == "default" or asset.get("media_type") == "默认壁纸"
         target_label = "Emotn UI 默认壁纸" if is_default else "已校验的自定义图片"
+        risks = tuple(context.get("compatibility_matches", ()))
+        wallpaper_risks = tuple(
+            {"status": "attention", "item": row.get("label", "修改壁纸"), "result": row.get("message", "大概率无法替换成功"), "evidence": row.get("evidence", "")}
+            for row in risks if row.get("action") == "wallpaper"
+        )
         return Question(
             question_id="WALLPAPER-CONFIRM-Q1",
             state_id=state,
@@ -546,6 +728,8 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             previous_result_summary="图片已完成本地格式和大小校验。",
             blocker_summary="电视系统仍可能在几天后、重启或升级后重置壁纸。",
             summary_rows=(
+                {"status": "completed", "item": "目标电视", "result": device_name},
+                *(wallpaper_risks or ({"status": "attention", "item": "修改壁纸", "result": "当前型号兼容性未知，可能失败"},)),
                 {"status": "completed", "item": "壁纸选择", "result": target_label, "evidence": str(asset.get("sha256", "默认资源"))[:12]},
                 {"status": "attention", "item": "持久性", "result": "可能被厂商系统重置"},
             ),
@@ -563,7 +747,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
         steps = tuple(
             context.get("guide_steps")
             or guide.get("disable_steps")
-            or ADB_GUIDANCE[2:4]
+            or ADB_CLOSE_GUIDANCE
         )
         return Question(
             question_id="FINISH-SAFETY-Q1",
@@ -573,7 +757,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             options=(
                 Option("both_closed", "两项都已关闭", "FINISH-CHECK", "执行一次只读冲突复核后记录", True),
                 Option("show_model_guide", "找不到设置，查看本型号详细指引", "FINISH-SAFETY", "继续停留在本题"),
-                Option("keep_enabled", "暂时保持开启并结束", "END-WARNING", "最终报告保留安全警告"),
+                Option("keep_enabled", "暂时保持开启并结束", "END-WARNING", "最终报告保留安全警告", shortcut="0"),
             ),
             previous_result_summary=f"已保存本次操作记录；目标设备为 {name}。",
             blocker_summary="ADB 保持开启会允许同一网络中的已授权电脑继续访问电视。",
@@ -597,8 +781,13 @@ def render_question(question: Question) -> str:
         )
         for row in question.summary_rows
     )
+    if question.previous_result_summary:
+        rows = (
+            SummaryRow("completed", "上一轮/当前进度", question.previous_result_summary),
+            *rows,
+        )
     if not rows:
-        rows = (SummaryRow("pending", "当前进度", question.previous_result_summary or "等待处理"),)
+        rows = (SummaryRow("pending", "当前进度", "等待处理"),)
     numbered = [
         option.shortcut or str(index)
         for index, option in enumerate(question.options, 1)
@@ -611,7 +800,9 @@ def render_question(question: Question) -> str:
     else:
         accepted = "请明确回复：" + "、".join(numbered) + "。"
     frame_options = []
-    for option in question.options:
+    start = 2 if question.kind == "short_text" else 1
+    visible_options = question.options[1:] if question.kind == "short_text" else question.options
+    for original_index, option in enumerate(visible_options, start=start):
         label = option.label
         description = option.description
         if option.recommended:
@@ -619,7 +810,7 @@ def render_question(question: Question) -> str:
         if not option.enabled:
             label += "（不可选）"
             description = option.unavailable_reason or description
-        frame_options.append((option.value, label, description, option.shortcut))
+        frame_options.append((option.value, label, description, option.shortcut or str(original_index)))
     frame = InteractionFrame(
         rows=rows,
         blocker=question.blocker_summary,
@@ -705,24 +896,19 @@ class WorkflowEngine:
             except AnswerError:
                 pass
             question = Question.from_dict(self.store.read()["pending_question"])
-            return {"accepted": False, "error": str(error), "question": question}
-
-        if current.state_id == "FINISH-SAFETY" and proposed.value == "both_closed":
-            safety = data.get("finish_safety", {})
-            if safety.get("adb_still_reachable"):
-                conflict = build_question("FINISH-SAFETY", data)
-                conflict = Question(
-                    **{
-                        **conflict.__dict__,
-                        "blocker_summary": "你选择了两项都已关闭，但刚才的只读检查显示 ADB 仍可连接。请再次检查电视开关。",
-                        "summary_rows": (
-                            {"status": "failed", "item": "ADB 关闭复核", "result": "ADB 仍可连接"},
-                            {"status": "attention", "item": "开发者模式", "result": "等待再次确认"},
-                        ),
-                    }
-                )
-                self.store.replace_pending_context(conflict)
-                return {"accepted": False, "error": conflict.blocker_summary, "question": conflict}
+            invalid = Question(
+                **{
+                    **question.__dict__,
+                    "blocker_summary": f"回答无效：{error}"
+                    + (f" 当前阻塞仍是：{question.blocker_summary}" if question.blocker_summary else ""),
+                    "summary_rows": (
+                        {"status": "failed", "item": "本次回答", "result": str(error)},
+                        *question.summary_rows,
+                    ),
+                }
+            )
+            self.store.replace_pending_context(invalid)
+            return {"accepted": False, "error": str(error), "question": invalid}
 
         if current.state_id == "UPDATE" and proposed.value == "decline_24h":
             state_path = data.get("update_state_path")
@@ -742,6 +928,10 @@ class WorkflowEngine:
             if proposed.value not in {"back", "safe_exit"}:
                 derived["candidate_ip"] = proposed.value
                 next_context["candidate_ip"] = proposed.value
+        if current.state_id == "ADB-SETUP" and isinstance(proposed.value, str):
+            if proposed.value not in {"show_official_guide", "back", "safe_exit"}:
+                derived["adb_path"] = proposed.value
+                next_context["adb_path"] = proposed.value
         if current.state_id == "TARGET-SELECT" and isinstance(proposed.value, str):
             if proposed.value.startswith("candidate_"):
                 index = int(proposed.value.rsplit("_", 1)[1]) - 1
@@ -785,9 +975,86 @@ class WorkflowEngine:
                     return {"accepted": False, "error": asset["reason"], "question": updated}
                 derived["wallpaper_asset"] = asset
                 next_context["wallpaper_asset"] = asset
+        if current.state_id == "WALLPAPER" and proposed.value == "default_wallpaper":
+            asset = {"kind": "default", "media_type": "默认壁纸", "size": 0}
+            derived["wallpaper_asset"] = asset
+            next_context["wallpaper_asset"] = asset
 
         terminal = proposed.next_state in TERMINAL_STATES
         action_required = proposed.next_state in ACTION_STATES
+        action_bindings: dict[str, Any] = {}
+        try:
+            if proposed.next_state == "DOWNLOAD-ACTION":
+                action_bindings["download_expectations"] = _download_expectations(
+                    tuple(next_context.get("selected_apps", ()))
+                )
+            if proposed.next_state == "SCAN-ACTION":
+                approval = (next_context.get("precheck") or {}).get("scan_approval")
+                if not approval:
+                    raise ValueError("未生成可核对的有限扫描范围。")
+                action_bindings["scan_approval"] = approval
+            if proposed.next_state == "INSTALL-ACTION":
+                plan = next_context.get("approved_plan")
+                if not isinstance(plan, dict) or plan.get("status") not in {"planned", "approved"}:
+                    raise ValueError("尚未从已验证下载文件生成不可变安装计划。")
+                if str(plan.get("serial")) != str(next_context.get("target_serial")):
+                    raise ValueError("安装计划绑定的电视与当前目标不一致。")
+                files = tuple(next_context.get("verified_downloads", ()))
+                expected = {(item.get("app_id"), item.get("sha256")) for item in files}
+                if plan.get("action") == "install_bundle":
+                    actual = {(item.get("app_id"), (item.get("apk") or {}).get("sha256")) for item in plan.get("installations", ())}
+                else:
+                    actual = {(plan.get("app_id"), (plan.get("apk") or {}).get("sha256"))}
+                if not expected or actual != expected:
+                    raise ValueError("安装计划未绑定刚完成验证的 APK 摘要。")
+                plan = {**plan, "status": "approved"}
+                self.store.set_approved_plan(plan)
+                next_context["approved_plan"] = plan
+                action_bindings["approved_plan"] = plan
+            if proposed.next_state in {"HOME-ACTION", "WALLPAPER-ACTION"}:
+                runtime = next_context.get("emotn_runtime") or {}
+                if runtime.get("verified") is not True or runtime.get("package") != EMOTN_PACKAGE:
+                    raise ValueError("尚未验证 Emotn UI 位于前台，不能修改 Home 键或壁纸。")
+        except ValueError as error:
+            updated = Question(
+                **{
+                    **current.__dict__,
+                    "blocker_summary": str(error),
+                    "summary_rows": (
+                        {"status": "failed", "item": "执行前检查", "result": str(error)},
+                        *current.summary_rows,
+                    ),
+                }
+            )
+            self.store.replace_pending_context(updated)
+            return {"accepted": False, "error": str(error), "question": updated}
+        target_required = {
+            "CONNECT-ACTION",
+            "INSPECT-ACTION",
+            "EMOTN-LAUNCH-ACTION",
+            "PREPARE-INSTALL-PLAN-ACTION",
+            "INSTALL-ACTION",
+            "DIAGNOSE-ACTION",
+            "HOME-ACTION",
+            "WALLPAPER-ACTION",
+            "FINISH-CHECK",
+        }
+        if action_required and proposed.next_state in target_required:
+            target = next_context.get("target_serial")
+            if proposed.next_state == "CONNECT-ACTION":
+                target = next_context.get("candidate_ip")
+            if not target:
+                updated = Question(
+                    **{
+                        **current.__dict__,
+                        "blocker_summary": "尚未锁定目标电视，不能开始这项操作。请返回设备发现并确认一台电视。",
+                        "summary_rows": (
+                            {"status": "failed", "item": "目标电视", "result": "未锁定"},
+                        ),
+                    }
+                )
+                self.store.replace_pending_context(updated)
+                return {"accepted": False, "error": updated.blocker_summary, "question": updated}
         next_question = (
             None
             if terminal or action_required
@@ -820,6 +1087,18 @@ class WorkflowEngine:
                 "candidate_ip": next_context.get("candidate_ip"),
                 "target_serial": next_context.get("target_serial"),
                 "requested_operation": proposed.value,
+                "emotn_runtime": next_context.get("emotn_runtime", {}),
+                "installed_apps": next_context.get("installed_apps", {}),
+                "host_platform": next_context.get("host_platform"),
+                "adb_path": next_context.get("adb_path"),
+                "verified_downloads": next_context.get("verified_downloads", []),
+                "approved_plan": next_context.get("approved_plan"),
+                "expected_home_package": EMOTN_PACKAGE,
+                "dangbei_expectation": next(
+                    (app for app in _load_catalog().get("apps", ()) if app.get("id") == "dangbei-market"),
+                    {},
+                ) if proposed.next_state == "DANGBEI-ACTION" else {},
+                **action_bindings,
             }
             self.store.set_pending_action(action)
             return {
@@ -839,10 +1118,14 @@ class WorkflowEngine:
         status: str,
         evidence: dict[str, Any],
     ) -> dict[str, Any]:
-        if not evidence:
-            raise AnswerError("操作结果必须包含可检查的 evidence。")
         data = self.store.read()
         pending = data.get("pending_action")
+        try:
+            validate_action_evidence(
+                action_id, status=status, evidence=evidence, pending=pending
+            )
+        except ValueError as error:
+            raise AnswerError(str(error)) from error
         record = self.store.complete_pending_action(
             action_id, status=status, evidence=evidence
         )
@@ -878,14 +1161,17 @@ class WorkflowEngine:
         if status != "completed":
             retry_state = {
                 "UPDATE-ACTION": "UPDATE",
+                "ADB-VALIDATE-ACTION": "ADB-SETUP",
                 "PASSIVE-DISCOVERY-ACTION": "DISCOVERY-NONE",
                 "CONNECT-ACTION": "DISCOVERY-CONNECT",
                 "SCAN-ACTION": "DISCOVERY-SCAN",
                 "INSPECT-ACTION": "TARGET",
+                "EMOTN-LAUNCH-ACTION": "TASK",
                 "DANGBEI-ACTION": "DANGBEI-SOURCE",
                 "DANGBEI-PAGE-ACTION": "DANGBEI-SOURCE",
                 "DIAGNOSE-ACTION": "DIAGNOSE",
                 "DOWNLOAD-ACTION": "DOWNLOAD-CONFIRM",
+                "PREPARE-INSTALL-PLAN-ACTION": "DOWNLOAD-VERIFY",
                 "INSTALL-ACTION": "INSTALL-PLAN",
                 "HOME-ACTION": "HOME-CONFIRM",
                 "WALLPAPER-ACTION": "WALLPAPER-CONFIRM",
@@ -903,6 +1189,7 @@ class WorkflowEngine:
                     "blocker_summary": f"上一次执行未完成：{result}",
                     "summary_rows": (
                         {"status": "failed", "item": "上一次执行", "result": result},
+                        *question.summary_rows,
                     ),
                 }
             )
@@ -912,6 +1199,11 @@ class WorkflowEngine:
         if action_id == "UPDATE-ACTION":
             next_state = "PRECHECK_WIFI"
             context["precheck"] = context.get("precheck", {})
+        elif action_id == "ADB-VALIDATE-ACTION":
+            precheck = evidence.get("precheck") or context.get("precheck", {})
+            self.store.update_fields(precheck=precheck)
+            context["precheck"] = precheck
+            next_state = "PRECHECK_WIFI"
         elif action_id in {"PASSIVE-DISCOVERY-ACTION", "SCAN-ACTION"}:
             discovered = evidence.get("precheck") or {
                 **context.get("precheck", {}),
@@ -941,24 +1233,72 @@ class WorkflowEngine:
             if isinstance(identity, dict) and identity:
                 self.store.update_fields(device_identity=identity)
                 context["device_identity"] = identity
+            installed_apps = evidence.get("installed_apps", {})
+            self.store.update_fields(installed_apps=installed_apps)
+            context["installed_apps"] = installed_apps
             next_state = "TASK"
             context["summary_rows"] = (
                 {"status": "completed", "item": "目标电视盘点", "result": result},
             )
-        elif action_id in {"DANGBEI-ACTION", "DANGBEI-PAGE-ACTION"}:
+        elif action_id == "EMOTN-LAUNCH-ACTION":
+            runtime = {
+                "package": evidence.get("package"),
+                "foreground": evidence.get("foreground"),
+                "verified": True,
+            }
+            self.store.update_fields(emotn_runtime=runtime)
+            context["emotn_runtime"] = runtime
+            next_state = "LAUNCHER-RISK"
+        elif action_id == "DANGBEI-ACTION":
+            verified = {
+                "app_id": "dangbei-market",
+                "path": evidence.get("path"),
+                "url": evidence.get("source_url"),
+                **(evidence.get("file_identity") or {}),
+            }
+            files = [*context.get("verified_downloads", ()), verified]
+            self.store.update_fields(verified_downloads=files, selected_apps=["dangbei-market"])
+            context["verified_downloads"] = files
+            context["selected_apps"] = ["dangbei-market"]
+            context["download_rows"] = (
+                {"status": "completed", "item": "当贝市场", "result": "官方包下载和身份校验完成"},
+            )
+            next_state = "DOWNLOAD-VERIFY"
+        elif action_id == "DANGBEI-PAGE-ACTION":
             next_state = "DANGBEI-SOURCE"
-            context["source_error"] = result
+            context["source_error"] = "已打开官网页面；包体身份仍未完成核验。"
         elif action_id == "DIAGNOSE-ACTION":
             next_state = "VERIFY"
             context["evidence_rows"] = (
                 {"status": row_status, "item": "应用诊断", "result": result},
             )
         elif action_id == "DOWNLOAD-ACTION":
+            files = list(evidence.get("files", ()))
+            self.store.update_fields(verified_downloads=files)
+            context["verified_downloads"] = files
             next_state = "DOWNLOAD-VERIFY"
             context["download_rows"] = (
                 {"status": row_status, "item": "下载和包体验证", "result": result},
             )
+        elif action_id == "PREPARE-INSTALL-PLAN-ACTION":
+            plan = evidence["plan"]
+            self.store.set_approved_plan(plan)
+            context["approved_plan"] = plan
+            next_state = "INSTALL-PLAN"
         elif action_id == "INSTALL-ACTION":
+            installed = dict(context.get("installed_apps", {}))
+            plan = (pending or {}).get("approved_plan") or {}
+            app_ids = (
+                [item.get("app_id") for item in plan.get("installations", ())]
+                if plan.get("action") == "install_bundle"
+                else [plan.get("app_id")]
+            )
+            for app_id in filter(None, app_ids):
+                catalog_app = next((app for app in _load_catalog().get("apps", ()) if app.get("id") == app_id), {})
+                installed[app_id] = catalog_app.get("version", "已安装")
+            if any(app_ids):
+                self.store.update_fields(installed_apps=installed)
+                context["installed_apps"] = installed
             next_state = "VERIFY"
             context["evidence_rows"] = (
                 {"status": row_status, "item": "应用安装", "result": result},

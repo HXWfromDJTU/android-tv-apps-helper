@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .adb import AdbError, AdbRunner, find_adb
-from .apk import ApkError, approve_plan, create_install_plan, inspect_apk, install_approved
+from .apk import ApkError, approve_plan, create_install_bundle_plan, create_install_plan, inspect_apk, install_approved
 from .catalog import CatalogError, eligible_downloads, load_catalog, validate_catalog
 from .compatibility import match_or_default
 from .guides import match_device_guide
@@ -41,15 +41,6 @@ def _parser() -> argparse.ArgumentParser:
 
     show = subcommands.add_parser("show-session")
     show.add_argument("session", type=Path)
-
-    set_question = subcommands.add_parser("set-question")
-    set_question.add_argument("session", type=Path)
-    set_question.add_argument("--question", required=True, type=Path)
-
-    answer = subcommands.add_parser("answer")
-    answer.add_argument("session", type=Path)
-    answer.add_argument("--question-id", required=True)
-    answer.add_argument("--value", required=True)
 
     workflow_start = subcommands.add_parser("workflow-start")
     workflow_start.add_argument("session", type=Path)
@@ -110,6 +101,10 @@ def _parser() -> argparse.ArgumentParser:
     plan_install.add_argument("--sha256", required=True)
     plan_install.add_argument("--out", required=True, type=Path)
 
+    prepare_plan = subcommands.add_parser("prepare-install-plan")
+    prepare_plan.add_argument("session", type=Path)
+    prepare_plan.add_argument("--out", required=True, type=Path)
+
     approve_install = subcommands.add_parser("approve-install")
     approve_install.add_argument("session", type=Path)
     approve_install.add_argument("--plan", required=True, type=Path)
@@ -155,15 +150,8 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 python_command=args.python_command,
             )
             _print_session(store)
-        elif args.command in {"show-session", "set-question", "answer"}:
+        elif args.command == "show-session":
             store = SessionStore(args.session)
-            if args.command == "set-question":
-                question = Question.from_dict(
-                    json.loads(args.question.read_text(encoding="utf-8"))
-                )
-                store.set_question(question)
-            elif args.command == "answer":
-                store.answer(args.value, submitted_question_id=args.question_id)
             _print_session(store)
         elif args.command == "workflow-start":
             precheck = json.loads(args.precheck.read_text(encoding="utf-8"))
@@ -300,18 +288,39 @@ def main(arguments: Sequence[str] | None = None) -> int:
         elif args.command == "apk-inspect":
             _print_json(inspect_apk(args.apk, expected_sha256=args.sha256))
         elif args.command == "plan-install":
-            SessionStore(args.session).read()
+            store = SessionStore(args.session)
+            session_data = store.read()
+            verified = next(
+                (item for item in session_data.get("verified_downloads", ()) if item.get("app_id") == args.app_id),
+                None,
+            )
+            if not verified or verified.get("sha256") != args.sha256:
+                raise ApkError("Install plan must use the APK digest from the verified download record.")
+            if str(session_data.get("target_serial")) != str(args.serial):
+                raise ApkError("Install plan target must match the confirmed television.")
             plan = create_install_plan(
                 app_id=args.app_id,
                 serial=args.serial,
                 apk_path=args.apk,
                 expected_sha256=args.sha256,
             )
+            store.set_approved_plan(plan)
             args.out.parent.mkdir(parents=True, exist_ok=True)
             args.out.write_text(
                 json.dumps(plan, ensure_ascii=False, indent=2) + "\n",
                 encoding="utf-8",
             )
+            _print_json(plan)
+        elif args.command == "prepare-install-plan":
+            store = SessionStore(args.session)
+            data = store.read()
+            plan = create_install_bundle_plan(
+                serial=str(data.get("target_serial") or ""),
+                verified_downloads=list(data.get("verified_downloads", ())),
+            )
+            store.set_approved_plan(plan)
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(plan, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             _print_json(plan)
         elif args.command == "approve-install":
             store = SessionStore(args.session)

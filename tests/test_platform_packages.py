@@ -11,7 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parents[1]
 BUILDER = REPO_ROOT / "scripts" / "build_platform_packages.py"
 RELEASE_BUILDER = REPO_ROOT / "scripts" / "build_release.py"
-PLATFORMS = ("workbuddy", "doubao-work", "claude")
+PLATFORMS = ("workbuddy", "doubao-work", "claude", "codex")
 ROOT = "android-tv-apps-helper/"
 SHARED_CORE = {
     "references/interaction-contract.md",
@@ -27,6 +27,7 @@ SHARED_CORE = {
     "scripts/tv_helper/cli.py",
     "scripts/tv_helper/compatibility.py",
     "scripts/tv_helper/downloads.py",
+    "scripts/tv_helper/evidence.py",
     "scripts/tv_helper/guides.py",
     "scripts/tv_helper/precheck.py",
     "scripts/tv_helper/presentation.py",
@@ -93,7 +94,7 @@ class PlatformPackageTests(unittest.TestCase):
                         for line in frontmatter.splitlines()
                         if line and not line.startswith(" ") and ":" in line
                     }
-                    if platform in {"workbuddy", "doubao-work"}:
+                    if platform in {"workbuddy", "doubao-work", "codex"}:
                         self.assertIn("version", top_level_keys)
                     if platform == "claude":
                         self.assertIn("${CLAUDE_SKILL_DIR}/scripts/tv-helper", skill)
@@ -167,9 +168,9 @@ class PlatformPackageTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             metadata = json.loads(result.stdout)
             self.assertEqual(metadata["version"], "0.3.0")
-            self.assertEqual(len(metadata["artifacts"]), 3)
+            self.assertEqual(len(metadata["artifacts"]), 4)
             lines = (output_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
-            self.assertEqual(len(lines), 3)
+            self.assertEqual(len(lines), 4)
             self.assertTrue(
                 all("  android-tv-apps-helper-" in line for line in lines)
             )

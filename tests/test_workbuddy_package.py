@@ -53,6 +53,7 @@ class WorkBuddyPackageTests(unittest.TestCase):
                     root + "scripts/tv_helper/adb.py",
                     root + "scripts/tv_helper/apk.py",
                     root + "scripts/tv_helper/catalog.py",
+                    root + "scripts/tv_helper/evidence.py",
                     root + "scripts/tv_helper/cli.py",
                     root + "scripts/tv_helper/questions.py",
                     root + "scripts/tv_helper/report.py",

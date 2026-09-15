@@ -93,7 +93,25 @@ def fetch_latest_stable_release(*, timeout: float = 5.0) -> dict[str, Any]:
         value = json.loads(response.read().decode("utf-8"))
     if not isinstance(value, list):
         raise ValueError("GitHub release response must be a list.")
-    return select_latest_stable_release(value)
+    selected = select_latest_stable_release(value)
+    release = dict(selected["release"])
+    checksum_asset = next(
+        (asset for asset in release.get("assets", ()) if asset.get("name") == "SHA256SUMS"),
+        None,
+    )
+    if checksum_asset and checksum_asset.get("browser_download_url"):
+        checksum_request = Request(
+            str(checksum_asset["browser_download_url"]),
+            headers={"Accept": "application/octet-stream", "User-Agent": "android-tv-apps-helper"},
+        )
+        with urlopen(checksum_request, timeout=timeout) as response:
+            checksums: dict[str, str] = {}
+            for line in response.read().decode("utf-8").splitlines():
+                parts = line.split()
+                if len(parts) == 2 and re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+                    checksums[parts[1].lstrip("*")] = parts[0]
+            release["sha256sums"] = checksums
+    return {**selected, "release": release}
 
 
 def validate_update_package(

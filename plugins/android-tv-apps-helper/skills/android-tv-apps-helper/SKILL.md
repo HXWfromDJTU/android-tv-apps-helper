@@ -5,7 +5,7 @@ description: Use when a user wants to connect an Android TV over ADB, install or
 
 # Android TV Apps Helper
 
-Guide one Android TV through a deterministic, reversible workflow. The Python harness owns question wording, legal transitions, tables, validation, and approvals. The model supplies verified observations only; it must not invent questions, labels, next states, success symbols, device identity, compatibility, or download sources.
+Guide one Android TV through a deterministic, reversible workflow. The harness owns wording, transitions, tables, validation, and approvals. The model supplies verified observations only.
 
 ## Start every invocation
 
@@ -23,7 +23,7 @@ At the first safe point, use the harness entry command. It checks the official s
 python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.0
 ```
 
-Render the harness output as a native required card when supported; otherwise show its Markdown unchanged. The first business question follows the completed precheck. Never ask whether to begin precheck.
+Use `question.component_prompt` and `question.component_options` for native cards; never render `prompt` alone. They contain progress, evidence, blocker, remediation, question and visible choices. For `short_text`, collect text and show only `component_options`; `options[0]` is not selectable. Otherwise show `rendered` unchanged. Never ask whether to begin precheck.
 
 ## Continue a question
 
@@ -43,9 +43,15 @@ python3 ../../scripts/tv-helper workflow-action-result <artifact-dir>/session.js
 
 Never move past a pending action by writing the session or merely saying it succeeded.
 
+For `PREPARE-INSTALL-PLAN-ACTION`, run `prepare-install-plan`; return its plan as evidence. Never hand-author one.
+
+```sh
+python3 ../../scripts/tv-helper prepare-install-plan <artifact-dir>/session.json --out <artifact-dir>/install-plan.json
+```
+
 ## Operations
 
-Read [references/adb-operations.md](references/adb-operations.md) before device commands and [references/apk-policy.md](references/apk-policy.md) before downloads. Every device command uses `adb -s <verified-serial>`. Downloads, installation, Home-key changes, and wallpaper changes have separate confirmations. Keep the factory launcher installed and enabled; never root, flash, factory-reset, silently clear data, or use an unknown APK mirror.
+Read [references/adb-operations.md](references/adb-operations.md) before device commands and [references/apk-policy.md](references/apk-policy.md) before downloads. Use `adb -s <verified-serial>`. Downloads, installs, Home and wallpaper require separate confirmations. Never root, flash, reset, clear data, disable the factory launcher, or use unknown mirrors.
 
 Use `../../catalog/apps.json` as the application source of truth.
 

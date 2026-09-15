@@ -17,12 +17,43 @@ PLAN_FIELDS = ("action", "app_id", "serial", "apk", "rollback")
 
 
 def _plan_id(plan: dict[str, Any]) -> str:
+    if plan.get("action") == "install_bundle":
+        body = {
+            "action": "install_bundle",
+            "serial": plan["serial"],
+            "installations": plan["installations"],
+            "rollback": plan["rollback"],
+        }
+        canonical = json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:20]
     try:
         body = {key: plan[key] for key in PLAN_FIELDS}
     except KeyError as error:
         raise ApkError(f"Install plan is missing required field: {error.args[0]}") from error
     canonical = json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:20]
+
+
+def create_install_bundle_plan(*, serial: str, verified_downloads: list[dict[str, Any]]) -> dict[str, Any]:
+    if not serial.strip() or not verified_downloads:
+        raise ApkError("A verified target and at least one verified download are required.")
+    installations = []
+    for item in verified_downloads:
+        inspection = inspect_apk(Path(str(item["path"])), expected_sha256=str(item["sha256"]))
+        installations.append({"app_id": str(item["app_id"]), "apk": inspection})
+    body = {
+        "action": "install_bundle",
+        "serial": serial,
+        "installations": installations,
+        "rollback": "Uninstall or reinstall each previously recorded version after explicit confirmation.",
+    }
+    body["plan_id"] = _plan_id(body)
+    body["status"] = "planned"
+    return body
+
+
+def validate_plan_id(plan: dict[str, Any]) -> None:
+    _require_unchanged_plan(plan)
 
 
 def _require_unchanged_plan(plan: dict[str, Any]) -> None:
@@ -103,7 +134,7 @@ def install_approved(
     plan: dict[str, Any],
     *,
     device_state: str,
-) -> str:
+) -> str | list[dict[str, Any]]:
     if plan.get("requires_revalidation"):
         raise ApkError("The migrated install plan requires revalidation before installation.")
     _require_unchanged_plan(plan)
@@ -116,14 +147,31 @@ def install_approved(
         raise ApkError("The approved plan is bound to a different target serial.")
     if _plan_id(saved) != _plan_id(plan):
         raise ApkError("The approved plan body does not match the requested install.")
-    inspection = inspect_apk(
-        Path(plan["apk"]["path"]),
-        expected_sha256=plan["apk"]["sha256"],
-    )
+    if plan.get("action") == "install_bundle":
+        results: list[dict[str, Any]] = []
+        saved_items = {item["app_id"]: item for item in saved.get("installations", ())}
+        for item in plan.get("installations", ()):
+            saved_item = saved_items.get(item.get("app_id"))
+            if not saved_item:
+                raise ApkError("The approved bundle does not contain this application.")
+            inspection = inspect_apk(
+                Path(item["apk"]["path"]), expected_sha256=item["apk"]["sha256"]
+            )
+            if inspection["sha256"] != saved_item["apk"]["sha256"]:
+                raise ApkError("An APK changed after bundle approval.")
+            output = runner.install(plan["serial"], Path(item["apk"]["path"]), state=device_state)
+            results.append(
+                {
+                    "app_id": item["app_id"],
+                    "target_serial": plan["serial"],
+                    "apk_sha256": inspection["sha256"],
+                    "plan_id": plan["plan_id"],
+                    "exit_code": 0,
+                    "output": output,
+                }
+            )
+        return results
+    inspection = inspect_apk(Path(plan["apk"]["path"]), expected_sha256=plan["apk"]["sha256"])
     if inspection["sha256"] != saved["apk"]["sha256"]:
         raise ApkError("The APK changed after approval.")
-    return runner.install(
-        plan["serial"],
-        Path(plan["apk"]["path"]),
-        state=device_state,
-    )
+    return runner.install(plan["serial"], Path(plan["apk"]["path"]), state=device_state)

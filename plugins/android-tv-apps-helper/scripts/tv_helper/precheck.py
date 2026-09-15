@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import shutil
+import socket
 import subprocess
+import ipaddress
+from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from .adb import parse_devices
@@ -61,6 +64,18 @@ def make_precheck_result(
                 "evidence": str(device.get("state", "状态未知")),
             }
         )
+    scan_approval = None
+    if local_address:
+        try:
+            address = ipaddress.ip_address(local_address)
+            if address.version == 4 and address.is_private:
+                scan_approval = {
+                    "scope": [str(ipaddress.ip_network(f"{local_address}/24", strict=False))],
+                    "ports": [5555],
+                    "purpose": "仅查找 Android TV ADB 服务",
+                }
+        except ValueError:
+            pass
     return {
         "status": "completed" if adb_available and listed else "attention",
         "blocker": (
@@ -74,29 +89,52 @@ def make_precheck_result(
         ],
         "rows": rows,
         "active_scan_performed": False,
+        "local_address": local_address,
+        "wifi_name": wifi_name,
+        "scan_approval": scan_approval,
     }
+
+
+def probe_local_address() -> str | None:
+    """Read the active route's local address without sending discovery traffic."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("1.1.1.1", 53))
+            address = str(probe.getsockname()[0])
+        parsed = ipaddress.ip_address(address)
+        return address if parsed.version == 4 and not parsed.is_loopback else None
+    except (OSError, ValueError):
+        return None
 
 
 def run_passive_precheck(
     *,
     adb_path: str | None = None,
     command_runner: Callable[..., Any] = subprocess.run,
+    network_probe: Callable[[], str | None] = probe_local_address,
 ) -> dict[str, Any]:
+    local_address = network_probe()
     resolved = adb_path or shutil.which("adb")
-    if not resolved:
+    if not resolved or (command_runner is subprocess.run and not Path(resolved).is_file()):
         return make_precheck_result(
             adb_available=False,
             adb_version=None,
             devices=(),
-            local_address=None,
+            local_address=local_address,
             wifi_name=None,
         )
-    version_result = command_runner(
-        [resolved, "version"], capture_output=True, text=True, check=False, timeout=5
-    )
-    devices_result = command_runner(
-        [resolved, "devices", "-l"], capture_output=True, text=True, check=False, timeout=5
-    )
+    try:
+        version_result = command_runner(
+            [resolved, "version"], capture_output=True, text=True, check=False, timeout=5
+        )
+        devices_result = command_runner(
+            [resolved, "devices", "-l"], capture_output=True, text=True, check=False, timeout=5
+        )
+    except OSError:
+        return make_precheck_result(
+            adb_available=False, adb_version=None, devices=(),
+            local_address=local_address, wifi_name=None,
+        )
     version = None
     if version_result.returncode == 0 and version_result.stdout:
         version = version_result.stdout.splitlines()[0].strip()
@@ -107,6 +145,6 @@ def run_passive_precheck(
         adb_available=version_result.returncode == 0,
         adb_version=version,
         devices=devices,
-        local_address=None,
+        local_address=local_address,
         wifi_name=None,
     )

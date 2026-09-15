@@ -48,14 +48,48 @@ class Question:
     accepted_attachment: str | None = None
     display_name: str | None = None
 
+    def component_prompt(self) -> str:
+        """Return a host-ready prompt that keeps context inside the question card."""
+        parts: list[str] = []
+        if self.previous_result_summary:
+            parts.append(f"上一轮/当前进度：{self.previous_result_summary}")
+        if self.summary_rows:
+            compact = "；".join(
+                f"{row.get('item', '事项')}：{row.get('result', '')}"
+                for row in self.summary_rows[:6]
+            )
+            if compact:
+                parts.append(f"检查结果：{compact}")
+        if self.blocker_summary:
+            parts.append(f"当前阻塞/风险：{self.blocker_summary}")
+        if self.remediation_guidance:
+            parts.append("处理方法：" + "；".join(self.remediation_guidance[:6]))
+        parts.append(f"问题：{self.prompt}")
+        return "\n".join(parts)
+
+    def component_options(self) -> list[dict[str, Any]]:
+        """Options suitable for native cards; omit the synthetic text-submit row."""
+        start = 2 if self.kind == "short_text" else 1
+        options = self.options[1:] if self.kind == "short_text" else self.options
+        result = []
+        for index, option in enumerate(options, start=start):
+            item = asdict(option)
+            item["display_index"] = option.shortcut or str(index)
+            result.append(item)
+        return result
+
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
         value["options"] = [asdict(option) for option in self.options]
+        value["component_prompt"] = self.component_prompt()
+        value["component_options"] = self.component_options()
         return value
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Question":
         copy = dict(value)
+        copy.pop("component_prompt", None)
+        copy.pop("component_options", None)
         copy["options"] = tuple(Option.from_dict(item) for item in copy["options"])
         for field in ("remediation_guidance", "evidence", "summary_rows"):
             copy[field] = tuple(copy.get(field, ()))
