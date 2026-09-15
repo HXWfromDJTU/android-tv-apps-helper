@@ -19,6 +19,8 @@ class Option:
     description: str = ""
     recommended: bool = False
     shortcut: str | None = None
+    enabled: bool = True
+    unavailable_reason: str = ""
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Option":
@@ -78,6 +80,9 @@ def _match_option(question: Question, token: str) -> Option:
         if option.shortcut:
             accepted.add(option.shortcut)
         if normalized in accepted:
+            if not option.enabled:
+                reason = f"：{option.unavailable_reason}" if option.unavailable_reason else ""
+                raise AnswerError(f"此选项当前不可选择{reason}")
             return option
     raise AnswerError("请明确选择当前问题中存在的一个选项。")
 
@@ -119,14 +124,15 @@ def validate_answer(
         option = _match_option(question, raw)
         return Answer(value=option.value, next_state=option.next_state, option_values=(option.value,))
     if question.kind == "multi_choice":
-        tokens = [item.strip() for item in re.split(r"[,，、]", raw) if item.strip()]
+        tokens = [item.strip() for item in re.split(r"[,，、\s]+", raw) if item.strip()]
         if not tokens:
             raise AnswerError("请明确选择至少一个选项。")
         selected: list[Option] = []
         for token in tokens:
             option = _match_option(question, token)
-            if option not in selected:
-                selected.append(option)
+            if option in selected:
+                raise AnswerError(f"选项“{option.label}”重复，请每项只选择一次。")
+            selected.append(option)
         next_states = {option.next_state for option in selected}
         if len(next_states) != 1:
             raise AnswerError("所选项目不能同时进入不同的下一状态。")

@@ -13,6 +13,29 @@ from tv_helper.catalog import CatalogError, eligible_downloads, load_catalog, va
 
 
 class CatalogTests(unittest.TestCase):
+    def test_official_direct_requires_publisher_source_and_allowlist(self):
+        catalog = {
+            "schema_version": 1,
+            "apps": [
+                {
+                    "id": "dangbei-market",
+                    "name": "当贝市场",
+                    "version": "6.0.7",
+                    "distribution": {
+                        "mode": "official_direct",
+                        "publisher_page": "https://www.dangbei.com/",
+                        "resolved_url": "https://app.qingyingyong.net/file.apk",
+                        "allowed_hosts": ["www.dangbei.com", "app.qingyingyong.net"],
+                        "verification_status": "pending_file_identity"
+                    },
+                    "assets": []
+                }
+            ]
+        }
+        validate_catalog(catalog)
+        catalog["apps"][0]["distribution"]["allowed_hosts"] = ["www.dangbei.com"]
+        with self.assertRaises(CatalogError):
+            validate_catalog(catalog)
     def setUp(self):
         self.catalog_path = PLUGIN / "catalog" / "apps.json"
 

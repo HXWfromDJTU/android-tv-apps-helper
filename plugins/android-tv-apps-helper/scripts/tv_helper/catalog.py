@@ -45,7 +45,25 @@ def validate_catalog(catalog: dict[str, Any]) -> None:
             if distribution.get("url") or any(asset.get("url") for asset in assets):
                 raise CatalogError(f"Pending app {app_id} cannot expose a download URL.")
             continue
-        if mode not in {"upstream_release", "project_release"}:
+        if mode == "official_direct":
+            publisher_page = distribution.get("publisher_page", "")
+            resolved_url = distribution.get("resolved_url", "")
+            allowed_hosts = distribution.get("allowed_hosts", [])
+            if not _valid_https(publisher_page) or not _valid_https(resolved_url):
+                raise CatalogError(f"Official source for {app_id} must use HTTPS URLs.")
+            if not isinstance(allowed_hosts, list) or not allowed_hosts:
+                raise CatalogError(f"Official source for {app_id} needs allowed_hosts.")
+            for url in (publisher_page, resolved_url):
+                if urlparse(url).hostname not in allowed_hosts:
+                    raise CatalogError(f"Official URL host for {app_id} is not allowlisted.")
+            verification = distribution.get("verification_status")
+            if verification not in {"pending_file_identity", "verified"}:
+                raise CatalogError(f"Official source for {app_id} has invalid verification status.")
+            if verification == "pending_file_identity":
+                if assets:
+                    raise CatalogError(f"Unverified official app {app_id} cannot expose install assets.")
+                continue
+        elif mode not in {"upstream_release", "project_release"}:
             raise CatalogError(f"Unsupported distribution mode for {app_id}: {mode}")
         if not assets:
             raise CatalogError(f"Downloadable app {app_id} must provide assets.")
@@ -64,6 +82,8 @@ def validate_catalog(catalog: dict[str, Any]) -> None:
                 raise CatalogError(f"Asset size for {app_id} must be positive.")
             if mode == "project_release" and not url.startswith(PROJECT_RELEASE_PREFIX):
                 raise CatalogError(f"Project-hosted asset for {app_id} must use this project's GitHub Releases.")
+            if mode == "official_direct" and urlparse(url).hostname not in distribution["allowed_hosts"]:
+                raise CatalogError(f"Official asset host for {app_id} is not allowlisted.")
             if app_id == "clash-meta" and not url.startswith(CLASH_RELEASE_PREFIX):
                 raise CatalogError("Clash Meta must use its official GitHub Release URL.")
 
@@ -74,4 +94,8 @@ def eligible_downloads(catalog: dict[str, Any]) -> list[dict[str, Any]]:
         app
         for app in catalog["apps"]
         if app["distribution"]["mode"] in {"upstream_release", "project_release"}
+        or (
+            app["distribution"]["mode"] == "official_direct"
+            and app["distribution"].get("verification_status") == "verified"
+        )
     ]

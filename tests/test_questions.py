@@ -15,6 +15,46 @@ from tv_helper.questions import AnswerError, Option, Question, validate_answer
 
 
 class QuestionValidationTests(unittest.TestCase):
+    def test_multi_choice_accepts_documented_separators(self):
+        question = Question(
+            question_id="APPS-Q1",
+            state_id="APPS",
+            kind="multi_choice",
+            prompt="选择应用",
+            options=(
+                Option("clash", "Clash Meta", "DOWNLOAD-CONFIRM"),
+                Option("smarttube", "SmartTube", "DOWNLOAD-CONFIRM"),
+                Option("dangbei", "当贝市场", "DOWNLOAD-CONFIRM"),
+            ),
+        )
+        for raw in ("1、2、3", "1,2,3", "1，2，3", "1 2 3"):
+            with self.subTest(raw=raw):
+                self.assertEqual(
+                    validate_answer(question, raw).option_values,
+                    ("clash", "smarttube", "dangbei"),
+                )
+
+    def test_multi_choice_rejects_duplicates_and_disabled_items(self):
+        question = Question(
+            question_id="APPS-Q1",
+            state_id="APPS",
+            kind="multi_choice",
+            prompt="选择应用",
+            options=(
+                Option("clash", "Clash Meta", "DOWNLOAD-CONFIRM"),
+                Option(
+                    "emotn",
+                    "Emotn UI",
+                    "DOWNLOAD-CONFIRM",
+                    enabled=False,
+                    unavailable_reason="当前没有已验证下载源",
+                ),
+            ),
+        )
+        with self.assertRaisesRegex(AnswerError, "重复"):
+            validate_answer(question, "1、1")
+        with self.assertRaisesRegex(AnswerError, "不可选择"):
+            validate_answer(question, "2")
     def setUp(self):
         self.question = Question(
             question_id="S0-Q1",

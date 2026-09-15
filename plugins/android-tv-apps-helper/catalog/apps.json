@@ -5,6 +5,7 @@
       "id": "clash-meta",
       "name": "Clash Meta for Android",
       "category": "network",
+      "purpose": "为电视应用提供可配置的网络代理能力",
       "version": "2.11.33",
       "distribution": {
         "mode": "upstream_release",
@@ -25,6 +26,7 @@
       "id": "smarttube",
       "name": "SmartTube",
       "category": "media",
+      "purpose": "在 Android TV 上观看在线视频",
       "version": "32.10 Stable",
       "distribution": {
         "mode": "project_release",
@@ -46,10 +48,24 @@
       "id": "dangbei-market",
       "name": "当贝市场",
       "category": "app-store",
-      "version": "unknown",
+      "purpose": "在电视上浏览和安装应用",
+      "version": "6.0.7",
       "distribution": {
-        "mode": "pending_rights",
-        "reason": "A local APK exists, but public redistribution permission has not been verified."
+        "mode": "official_direct",
+        "publisher_page": "https://www.dangbei.com/",
+        "resolved_url": "https://app.qingyingyong.net/down/20260706/dangbeimarket_6.0.7_613_znds.apk",
+        "backup_page": "https://apk.znds.com/",
+        "allowed_hosts": [
+          "www.dangbei.com",
+          "dangbei.com",
+          "app.qingyingyong.net",
+          "apk.znds.com"
+        ],
+        "verification_status": "pending_file_identity",
+        "expected_package": "com.dangbeimarket",
+        "publisher_version_date": "2026-07-06",
+        "checked_at": "2026-09-15",
+        "reason": "The publisher-linked APK returned HTTP 567 in the release environment, so package, signature, size, and SHA-256 remain unverified."
       },
       "assets": []
     },
@@ -57,6 +73,7 @@
       "id": "emotn-ui",
       "name": "Emotn UI",
       "category": "launcher",
+      "purpose": "替换电视桌面并支持自定义壁纸",
       "version": "1.1.0.1",
       "distribution": {
         "mode": "pending_rights",
@@ -68,6 +85,7 @@
       "id": "jiashitong",
       "name": "佳视通",
       "category": "live-tv",
+      "purpose": "观看电视直播内容",
       "version": "1.0.0",
       "distribution": {
         "mode": "pending_file",
@@ -79,6 +97,7 @@
       "id": "chengfeng-tv",
       "name": "乘风TV",
       "category": "live-tv",
+      "purpose": "观看电视直播内容",
       "version": "1.0.3",
       "distribution": {
         "mode": "pending_file",
@@ -90,6 +109,7 @@
       "id": "polang-tv",
       "name": "魄狼TV",
       "category": "live-tv",
+      "purpose": "观看电视直播内容",
       "version": "1.0.7",
       "distribution": {
         "mode": "pending_file",
@@ -101,6 +121,7 @@
       "id": "nfgc-tv",
       "name": "奈飞工厂TV",
       "category": "media",
+      "purpose": "浏览和播放影视内容",
       "version": "9.0.1 test",
       "distribution": {
         "mode": "pending_rights",
