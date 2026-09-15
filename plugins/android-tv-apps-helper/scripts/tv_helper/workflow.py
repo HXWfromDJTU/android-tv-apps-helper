@@ -154,6 +154,20 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
                 0,
                 Option("configure_adb", "安装或指定 ADB 工具", "ADB-SETUP", "使用 Android 官方 Platform-Tools", True),
             )
+            options = [option for option in options if option.value != "unsure_wifi"]
+            options = [
+                (
+                    Option(
+                        "different_wifi",
+                        "尚未确认同一 Wi-Fi",
+                        "PRECHECK_WIFI",
+                        "包含不在同一网络或暂时不确定；先核对网络名称",
+                    )
+                    if option.value == "different_wifi"
+                    else option
+                )
+                for option in options
+            ]
         options.append(_safe_exit(safety_exit))
         return Question(
             question_id="PRECHECK-WIFI-Q1",

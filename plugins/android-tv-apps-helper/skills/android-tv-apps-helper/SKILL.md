@@ -23,7 +23,7 @@ At the first safe point, use the harness entry command. It checks the official s
 python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.0
 ```
 
-Use `question.component_prompt` and `question.component_options` for native cards; never render `prompt` alone. They contain progress, evidence, blocker, remediation, question and visible choices. For `short_text`, collect text and show only `component_options`; `options[0]` is not selectable. Otherwise show `rendered` unchanged. Never ask whether to begin precheck.
+Use `component_prompt` and `component_options` only when `native_card_compatible` is true. Never render `prompt` alone, omit choices, preselect, or hide `safe_exit` in Other. Otherwise show `rendered` unchanged. For `short_text`, collect text and omit synthetic `options[0]`. Never ask whether to begin precheck.
 
 ## Continue a question
 
@@ -42,6 +42,8 @@ python3 ../../scripts/tv-helper workflow-action-result <artifact-dir>/session.js
 ```
 
 Never move past a pending action by writing the session or merely saying it succeeded.
+
+Precheck is read-only. Never download or install ADB, Platform-Tools, an APK, or dependencies without `action_required` after an explicit accepted answer. `configure_adb`, recommendations, and model inference are not approval.
 
 For `PREPARE-INSTALL-PLAN-ACTION`, run `prepare-install-plan`; return its plan as evidence. Never hand-author one.
 

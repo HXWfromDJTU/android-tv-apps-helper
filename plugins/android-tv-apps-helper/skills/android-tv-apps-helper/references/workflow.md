@@ -14,6 +14,8 @@ The harness is the state authority. The Agent renders its `InteractionFrame`, su
 
 Run the limited read-only precheck without asking permission. It may locate ADB, inspect local interface/Wi-Fi facts, call `adb devices -l`, and use existing neighbor/mDNS data. It does not scan the subnet, probe arbitrary addresses, or run `adb connect`.
 
+Never download or install ADB, Platform-Tools, an APK, or another dependency during or after this read-only entry. Missing tooling is a blocker to explain, not permission to repair the host. A `configure_adb` answer only advances to the path/guide question. Perform a download, host write, installation, scan, connection, or TV mutation only for an exact current `action_required` created after the harness accepts explicit approval.
+
 The first business question is `PRECHECK-WIFI-Q1`. Its table shows what was actually checked and which devices are only candidates. It asks whether computer and TV use the same Wi-Fi. `PRECHECK-ADB-Q1` separately asks whether ADB/network/wireless debugging is enabled and contains the six-step guide plus the generic diagram.
 
 ## Discovery and target lock

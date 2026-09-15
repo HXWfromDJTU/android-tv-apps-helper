@@ -83,6 +83,7 @@ class Question:
         value["options"] = [asdict(option) for option in self.options]
         value["component_prompt"] = self.component_prompt()
         value["component_options"] = self.component_options()
+        value["native_card_compatible"] = len(value["component_options"]) <= 4
         return value
 
     @classmethod
@@ -90,6 +91,7 @@ class Question:
         copy = dict(value)
         copy.pop("component_prompt", None)
         copy.pop("component_options", None)
+        copy.pop("native_card_compatible", None)
         copy["options"] = tuple(Option.from_dict(item) for item in copy["options"])
         for field in ("remediation_guidance", "evidence", "summary_rows"):
             copy[field] = tuple(copy.get(field, ()))

@@ -147,6 +147,26 @@ class DialogueContractTests(unittest.TestCase):
         self.assertIn("0. 安全退出", rendered)
         self.assertEqual(question.options[-1].shortcut, "0")
 
+    def test_adb_missing_precheck_fits_a_four_option_native_card(self):
+        question = build_question(
+            "PRECHECK_WIFI",
+            {
+                "precheck": {
+                    "rows": ({"status": "failed", "item": "ADB 工具", "result": "未找到"},),
+                }
+            },
+        )
+        payload = question.to_dict()
+        self.assertEqual(len(payload["component_options"]), 4)
+        self.assertTrue(payload["native_card_compatible"])
+        self.assertEqual(payload["component_options"][-1]["value"], "safe_exit")
+        self.assertNotIn("unsure_wifi", {item["value"] for item in payload["component_options"]})
+
+    def test_questions_with_more_than_four_choices_require_text_fallback(self):
+        payload = build_question("TASK", {}).to_dict()
+        self.assertGreater(len(payload["component_options"]), 4)
+        self.assertFalse(payload["native_card_compatible"])
+
     def test_every_enabled_transition_is_buildable_or_terminal(self):
         for state in WORKFLOW_STATES:
             question = build_question(state, {})

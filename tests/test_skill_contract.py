@@ -54,6 +54,18 @@ class SkillContractTests(unittest.TestCase):
         for invariant in ("PRECHECK-WIFI-Q1", "pending_question", "local_computer"):
             self.assertIn(invariant, text)
 
+    def test_skill_forbids_unapproved_host_downloads_after_read_only_precheck(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        workflow = (SKILL_DIR / "references" / "workflow.md").read_text(encoding="utf-8")
+        interaction = (SKILL_DIR / "references" / "interaction-contract.md").read_text(
+            encoding="utf-8"
+        )
+        for text in (skill, workflow):
+            self.assertIn("Never download or install ADB", text)
+            self.assertIn("action_required", text)
+        self.assertIn("native_card_compatible", interaction)
+        self.assertIn("never map `safe_exit` to a generic Other field", interaction)
+
 
 if __name__ == "__main__":
     unittest.main()

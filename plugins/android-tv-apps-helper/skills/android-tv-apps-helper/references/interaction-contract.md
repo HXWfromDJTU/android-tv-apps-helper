@@ -29,7 +29,7 @@ Set `interaction_surface` once per session:
 
 UI failure changes only the surface. Preserve the question ID, options, and state. Never emit raw `<widget>`, `<choices>`, `<visual-option>`, or fake HTML buttons. Do not call another product such as ChatCut merely to borrow its UI.
 
-For `structured_form`, use stable option values with localized labels and descriptions. Keep the label-to-value map when a host returns display text. Mark blocking inputs `required`. For `explicit_consent`, use one initially unselected confirmation control containing the full action and impact; attachments and other fields are not consent.
+For `structured_form`, use stable option values with localized labels and descriptions. Use a native card only when `native_card_compatible` is true. Otherwise render the complete text menu: never omit choices, never preselect the recommendation, and never map `safe_exit` to a generic Other field. Keep the label-to-value map when a host returns display text. Mark blocking inputs `required`. For `explicit_consent`, use one initially unselected confirmation control containing the full action and impact; attachments and other fields are not consent.
 
 ## Question types
 
