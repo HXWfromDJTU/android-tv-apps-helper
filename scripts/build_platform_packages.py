@@ -21,32 +21,34 @@ def _manifest_version() -> str:
 
 
 def _frontmatter(platform: str, version: str) -> str:
-    common = f"""---
+    common = """---
 name: android-tv-apps-helper
 description: Use when connecting an Android TV over ADB, installing or inspecting TV APKs, simplifying the launcher, or diagnosing app launch, picture, sound, or remote-control problems.
-metadata:
-  version: {version}
-  platforms: claude,codex,workbuddy,doubao-work
 """
     if platform == "workbuddy":
-        extra = """display_name: Android TV Apps Helper
+        extra = f"""display_name: Android TV Apps Helper
 display_name_en: Android TV Apps Helper
 description_zh: 通过必答选择题安全连接 Android TV、核验并安装 APK、诊断画面声音和遥控问题。
 description_en: Safely connect an Android TV, validate and install APKs, and diagnose playback or remote-control issues.
 category: productivity
+version: {version}
 author: SwainWong
 allowed-tools: Bash
 user-invocable: true
 """
     elif platform == "doubao-work":
-        extra = """display_name: Android TV Apps Helper
+        extra = f"""display_name: Android TV Apps Helper
 description_zh: 通过必答选择题安全连接 Android TV、核验并安装 APK、诊断画面声音和遥控问题。
+version: {version}
 author: SwainWong
 allowed-tools: Bash
 user-invocable: true
 """
     elif platform == "claude":
-        extra = """allowed-tools: Bash
+        extra = f"""metadata:
+  version: {version}
+  platforms: claude,codex,workbuddy,doubao-work
+allowed-tools: Bash
 """
     else:
         raise ValueError(f"Unsupported platform: {platform}")

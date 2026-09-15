@@ -74,6 +74,14 @@ class PlatformPackageTests(unittest.TestCase):
                     skill = archive.read(ROOT + "SKILL.md").decode("utf-8")
                     self.assertIn("name: android-tv-apps-helper", skill)
                     self.assertIn("version: 0.3.0", skill)
+                    frontmatter = skill.split("---", 2)[1]
+                    top_level_keys = {
+                        line.split(":", 1)[0]
+                        for line in frontmatter.splitlines()
+                        if line and not line.startswith(" ") and ":" in line
+                    }
+                    if platform in {"workbuddy", "doubao-work"}:
+                        self.assertIn("version", top_level_keys)
                     if platform == "claude":
                         self.assertIn("${CLAUDE_SKILL_DIR}/scripts/tv-helper", skill)
                     else:
