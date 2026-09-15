@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "android-tv-apps-helper",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Guided Android TV ADB setup, APK installation, verification, and recovery.",
   "author": {
     "name": "SwainWong",
