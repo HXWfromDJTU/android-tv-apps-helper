@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "guides": [
+    {
+      "id": "xiaomi-android-tv-family",
+      "match": {"manufacturer": "Xiaomi"},
+      "display_name": "小米电视（Android TV / MIUI TV 系列）",
+      "enable_steps": [
+        "打开电视设置，进入‘关于’或‘设备偏好设置 → 关于’。",
+        "连续选择‘产品型号/版本/Build’约 7 次，直到提示开发者选项已开启。",
+        "返回设置，进入‘账号与安全’或‘开发者选项’，开启 ADB 调试/网络调试。",
+        "连接时在电视上确认 RSA 授权。"
+      ],
+      "disable_steps": [
+        "打开电视设置，进入‘账号与安全’或‘开发者选项’。",
+        "关闭‘ADB 调试/网络调试/无线调试’。",
+        "如果存在‘开发者选项’总开关，再将它关闭。"
+      ],
+      "source": "project-maintained model-family guide; verify labels on the TV",
+      "verified_at": "2026-09-15"
+    },
+    {
+      "id": "generic-android-tv",
+      "match": {"scope": "generic"},
+      "display_name": "通用 Android TV",
+      "enable_steps": [
+        "打开设置，进入‘系统/设备偏好设置 → 关于’。",
+        "连续选择‘Build/版本’约 7 次以开启开发者选项。",
+        "返回‘开发者选项’，开启 ADB、网络调试或无线调试。",
+        "记录电视 IP，并在电视上确认 RSA 授权。"
+      ],
+      "disable_steps": [
+        "打开‘设置 → 系统/设备偏好设置 → 开发者选项’。",
+        "关闭 ADB、网络调试或无线调试。",
+        "如果电视提供开发者选项总开关，再将它关闭。"
+      ],
+      "source": "generic Android TV navigation",
+      "verified_at": "2026-09-15"
+    }
+  ]
+}

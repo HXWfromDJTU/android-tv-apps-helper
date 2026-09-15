@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "records": [],
+  "default": {
+    "wallpaper": "unknown",
+    "home_key": "unknown"
+  },
+  "notes": "Do not treat HarmonyOS as HyperOS. Add a record only after the actual device fingerprint and result evidence are verified."
+}
