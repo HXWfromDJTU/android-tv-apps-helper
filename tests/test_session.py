@@ -18,6 +18,60 @@ from tv_helper.session import SessionStore
 
 
 class SessionStoreTests(unittest.TestCase):
+    def test_schema_two_session_migrates_without_losing_target_or_plan(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "session.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "host_platform": "codex",
+                        "execution_context": "local_computer",
+                        "interaction_surface": "text_menu",
+                        "current_state": "S8",
+                        "pending_question": None,
+                        "target_serial": "192.0.2.20:5555",
+                        "approved_plan": {"plan_id": "PLAN-old"},
+                        "history": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            data = SessionStore(path).read()
+
+            self.assertEqual(data["schema_version"], 3)
+            self.assertEqual(data["target_serial"], "192.0.2.20:5555")
+            self.assertEqual(data["approved_plan"]["plan_id"], "PLAN-old")
+            self.assertEqual(data["workflow_revision"], "v0.3.0")
+            self.assertIn("summary_rows", data)
+
+    def test_question_context_survives_invalid_answer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(
+                Path(directory) / "session.json",
+                interaction_surface="text_menu",
+            )
+            question = Question(
+                question_id="S2-Q1",
+                state_id="S2",
+                kind="single_choice",
+                prompt="下一步怎么处理？",
+                options=(Option("retry", "重新检查", "S2"),),
+                previous_result_summary="没有发现设备",
+                blocker_summary="ADB 尚未连接",
+                remediation_guidance=("打开电视网络调试。",),
+                summary_rows=({"status": "attention", "item": "设备", "result": "0 台"},),
+            )
+            store.set_question(question)
+
+            with self.assertRaises(AnswerError):
+                store.answer("继续", submitted_question_id="S2-Q1")
+
+            saved = store.read()["pending_question"]
+            self.assertEqual(saved["previous_result_summary"], "没有发现设备")
+            self.assertEqual(saved["blocker_summary"], "ADB 尚未连接")
+            self.assertEqual(saved["attempts"], 1)
     def test_invalid_answer_preserves_pending_question_and_state(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(

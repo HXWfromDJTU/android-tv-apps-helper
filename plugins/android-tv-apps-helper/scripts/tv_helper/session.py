@@ -41,7 +41,7 @@ class SessionStore:
         store = cls(path)
         store._write(
             {
-                "schema_version": 2,
+                "schema_version": 3,
                 "created_at": _timestamp(),
                 "updated_at": _timestamp(),
                 "host_platform": host_platform,
@@ -56,12 +56,57 @@ class SessionStore:
                 "target_serial": None,
                 "approved_plan": None,
                 "history": [],
+                "workflow_revision": "v0.3.0",
+                "session_sequence": 0,
+                "interaction_capabilities": {},
+                "update_check": {},
+                "precheck": {},
+                "device_identity": {},
+                "device_guide_match": None,
+                "compatibility_matches": [],
+                "selected_apps": [],
+                "download_confirmation": None,
+                "wallpaper_asset": None,
+                "evidence_records": [],
+                "summary_rows": [],
+                "finish_safety": {},
             }
         )
         return store
 
     def read(self) -> dict[str, Any]:
-        return json.loads(self.path.read_text(encoding="utf-8"))
+        data = json.loads(self.path.read_text(encoding="utf-8"))
+        if data.get("schema_version") == 2:
+            data = self._migrate_schema_two(data)
+            self._write(data)
+        if data.get("schema_version") != 3:
+            raise ValueError("Unsupported session schema version.")
+        return data
+
+    @staticmethod
+    def _migrate_schema_two(data: dict[str, Any]) -> dict[str, Any]:
+        migrated = dict(data)
+        migrated["schema_version"] = 3
+        defaults = {
+            "workflow_revision": "v0.3.0",
+            "session_sequence": 0,
+            "interaction_capabilities": {},
+            "update_check": {},
+            "precheck": {},
+            "device_identity": {},
+            "device_guide_match": None,
+            "compatibility_matches": [],
+            "selected_apps": [],
+            "download_confirmation": None,
+            "wallpaper_asset": None,
+            "evidence_records": [],
+            "summary_rows": [],
+            "finish_safety": {},
+        }
+        for key, value in defaults.items():
+            migrated.setdefault(key, value)
+        migrated["updated_at"] = _timestamp()
+        return migrated
 
     def set_question(self, question: Question) -> None:
         data = self.read()

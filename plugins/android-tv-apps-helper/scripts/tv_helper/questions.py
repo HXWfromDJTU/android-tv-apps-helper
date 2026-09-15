@@ -36,6 +36,15 @@ class Question:
     input_prefix: str | None = None
     input_format: str | None = None
     attempts: int = 0
+    previous_result_summary: str = ""
+    progress_summary: str = ""
+    blocker_summary: str = ""
+    remediation_guidance: tuple[str, ...] = ()
+    evidence: tuple[dict[str, Any], ...] = ()
+    summary_rows: tuple[dict[str, Any], ...] = ()
+    visual_aid: str | None = None
+    accepted_attachment: str | None = None
+    display_name: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
@@ -46,6 +55,8 @@ class Question:
     def from_dict(cls, value: dict[str, Any]) -> "Question":
         copy = dict(value)
         copy["options"] = tuple(Option.from_dict(item) for item in copy["options"])
+        for field in ("remediation_guidance", "evidence", "summary_rows"):
+            copy[field] = tuple(copy.get(field, ()))
         return cls(**copy)
 
 
