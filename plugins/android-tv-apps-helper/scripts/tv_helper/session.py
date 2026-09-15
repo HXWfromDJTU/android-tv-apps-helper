@@ -60,6 +60,7 @@ class SessionStore:
                 "session_sequence": 0,
                 "interaction_capabilities": {},
                 "update_check": {},
+                "update_state_path": None,
                 "precheck": {},
                 "device_identity": {},
                 "device_guide_match": None,
@@ -92,6 +93,7 @@ class SessionStore:
             "session_sequence": 0,
             "interaction_capabilities": {},
             "update_check": {},
+            "update_state_path": None,
             "precheck": {},
             "device_identity": {},
             "device_guide_match": None,
@@ -110,6 +112,11 @@ class SessionStore:
 
     def set_question(self, question: Question) -> None:
         data = self.read()
+        pending = data.get("pending_question")
+        if pending and pending.get("question_id") != question.question_id:
+            raise AnswerError(
+                f"问题 {pending['question_id']} 尚未回答，不能切换到其他问题。"
+            )
         data["current_state"] = question.state_id
         data["pending_question"] = question.to_dict()
         data["updated_at"] = _timestamp()

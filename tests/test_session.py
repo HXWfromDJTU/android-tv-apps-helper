@@ -72,6 +72,33 @@ class SessionStoreTests(unittest.TestCase):
             self.assertEqual(saved["previous_result_summary"], "没有发现设备")
             self.assertEqual(saved["blocker_summary"], "ADB 尚未连接")
             self.assertEqual(saved["attempts"], 1)
+
+    def test_pending_question_cannot_be_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(
+                Path(directory) / "session.json",
+                interaction_surface="text_menu",
+            )
+            first = Question(
+                question_id="S2-Q1",
+                state_id="S2",
+                kind="single_choice",
+                prompt="先回答这一题",
+                options=(Option("retry", "重试", "S2"),),
+            )
+            second = Question(
+                question_id="S5-Q1",
+                state_id="S5",
+                kind="single_choice",
+                prompt="不应覆盖",
+                options=(Option("apps", "选择应用", "S6"),),
+            )
+            store.set_question(first)
+
+            with self.assertRaises(AnswerError):
+                store.set_question(second)
+
+            self.assertEqual(store.read()["pending_question"]["question_id"], "S2-Q1")
     def test_invalid_answer_preserves_pending_question_and_state(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(
