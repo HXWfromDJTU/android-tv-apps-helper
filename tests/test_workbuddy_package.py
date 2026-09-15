@@ -55,7 +55,15 @@ class WorkBuddyPackageTests(unittest.TestCase):
                     root + "scripts/tv_helper/catalog.py",
                     root + "scripts/tv_helper/cli.py",
                     root + "scripts/tv_helper/questions.py",
+                    root + "scripts/tv_helper/report.py",
                     root + "scripts/tv_helper/session.py",
+                    root + "scripts/tv_helper/workflow.py",
+                    root + "scripts/tv_helper/presentation.py",
+                    root + "data/copy.zh-CN.json",
+                    root + "data/device-guides.json",
+                    root + "data/compatibility.json",
+                    root + "data/update-manifest.json",
+                    root + "assets/adb-enable-generic.svg",
                 }
                 self.assertTrue(required.issubset(names), required - names)
                 self.assertFalse(any(name.lower().endswith(".apk") for name in names))

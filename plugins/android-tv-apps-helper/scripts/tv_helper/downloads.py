@@ -28,12 +28,18 @@ def resolve_official_url(
 def validate_download_identity(
     expected: dict[str, Any], actual: dict[str, Any]
 ) -> None:
-    for field in ("package", "version_name", "signing_sha256"):
+    for field in (
+        "package",
+        "version_name",
+        "version_code",
+        "min_sdk",
+        "abi",
+        "signing_sha256",
+        "size",
+        "sha256",
+    ):
         value = expected.get(field)
         if not value or actual.get(field) != value:
-            raise DownloadError(f"APK {field} does not match the verified catalog identity.")
-    for field in ("size", "sha256"):
-        if field in expected and actual.get(field) != expected[field]:
             raise DownloadError(f"APK {field} does not match the verified catalog identity.")
 
 

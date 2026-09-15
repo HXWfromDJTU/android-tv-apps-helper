@@ -51,7 +51,7 @@ class SkillContractTests(unittest.TestCase):
         text = path.read_text(encoding="utf-8")
         for platform in ("Claude", "Codex", "WorkBuddy", "豆包工作"):
             self.assertIn(platform, text)
-        for invariant in ("S0–S11", "pending_question", "local_computer"):
+        for invariant in ("PRECHECK-WIFI-Q1", "pending_question", "local_computer"):
             self.assertIn(invariant, text)
 
 

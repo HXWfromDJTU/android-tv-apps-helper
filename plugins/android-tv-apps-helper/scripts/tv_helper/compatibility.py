@@ -59,3 +59,17 @@ def compatibility_rows(
             }
         )
     return rows
+
+
+def match_or_default(
+    identity: dict[str, Any], registry: dict[str, Any]
+) -> tuple[dict[str, Any] | None, list[dict[str, str]]]:
+    match = match_compatibility(identity, registry.get("records", ()))
+    effective = match
+    if effective is None and isinstance(registry.get("default"), dict):
+        effective = {
+            "id": "default-high-risk",
+            "actions": registry["default"],
+            "evidence": registry.get("default_evidence", "项目默认兼容性结论"),
+        }
+    return match, compatibility_rows(effective, ("wallpaper", "home_key"))

@@ -112,6 +112,27 @@ class ApkTests(unittest.TestCase):
                 approve_plan(session, plan, confirmation="confirm_install")
             self.assertIsNone(session.read()["approved_plan"])
 
+    def test_migrated_plan_requires_revalidation_before_approval_or_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            session = SessionStore.create(root / "session.json", interaction_surface="text_menu")
+            apk = root / "app.apk"
+            digest = make_apk(apk)
+            plan = create_install_plan(
+                app_id="smarttube",
+                serial="192.0.2.20:5555",
+                apk_path=apk,
+                expected_sha256=digest,
+            )
+            stale = {**plan, "status": "approved", "requires_revalidation": True}
+            session.set_approved_plan(stale)
+            runner = FakeRunner()
+            with self.assertRaisesRegex(ApkError, "revalidation"):
+                install_approved(session, runner, stale, device_state="device")
+            with self.assertRaisesRegex(ApkError, "revalidation"):
+                approve_plan(session, stale, confirmation="confirm_install")
+            self.assertEqual(runner.calls, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -43,6 +43,7 @@ class SessionStoreTests(unittest.TestCase):
             self.assertEqual(data["schema_version"], 3)
             self.assertEqual(data["target_serial"], "192.0.2.20:5555")
             self.assertEqual(data["approved_plan"]["plan_id"], "PLAN-old")
+            self.assertTrue(data["approved_plan"]["requires_revalidation"])
             self.assertEqual(data["workflow_revision"], "v0.3.0")
             self.assertIn("summary_rows", data)
 
@@ -99,6 +100,44 @@ class SessionStoreTests(unittest.TestCase):
                 store.set_question(second)
 
             self.assertEqual(store.read()["pending_question"]["question_id"], "S2-Q1")
+
+    def test_same_question_id_cannot_replace_prompt_or_options(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(Path(directory) / "session.json", interaction_surface="text_menu")
+            original = Question(
+                question_id="LOCK-Q1",
+                state_id="LOCK",
+                kind="single_choice",
+                prompt="原问题",
+                options=(Option("stay", "保留", "LOCK"),),
+            )
+            replacement = Question(
+                question_id="LOCK-Q1",
+                state_id="OTHER",
+                kind="single_choice",
+                prompt="替换问题",
+                options=(Option("escape", "越过", "END"),),
+            )
+            store.set_question(original)
+            with self.assertRaises(AnswerError):
+                store.set_question(replacement)
+            self.assertEqual(store.read()["pending_question"]["prompt"], "原问题")
+
+    def test_current_state_cannot_change_while_question_is_pending(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(Path(directory) / "session.json", interaction_surface="text_menu")
+            store.set_question(
+                Question(
+                    question_id="LOCK-Q1",
+                    state_id="LOCK",
+                    kind="single_choice",
+                    prompt="原问题",
+                    options=(Option("stay", "保留", "LOCK"),),
+                )
+            )
+            with self.assertRaises(AnswerError):
+                store.update_fields(current_state="OTHER")
+            self.assertEqual(store.read()["current_state"], "LOCK")
     def test_invalid_answer_preserves_pending_question_and_state(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(

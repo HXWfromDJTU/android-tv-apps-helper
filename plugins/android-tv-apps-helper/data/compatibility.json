@@ -2,8 +2,9 @@
   "schema_version": 1,
   "records": [],
   "default": {
-    "wallpaper": "unknown",
-    "home_key": "unknown"
+    "wallpaper": "high_risk",
+    "home_key": "high_risk"
   },
-  "notes": "Do not treat HarmonyOS as HyperOS. Add a record only after the actual device fingerprint and result evidence are verified."
+  "default_evidence": "User-reported cross-device observation: other TV systems frequently restore vendor wallpaper and restrict Home-key replacement.",
+  "notes": "Do not treat HarmonyOS as HyperOS. The reported Xiaomi system label is not normalized enough to become a registry key. Use the exact inspected fingerprint before adding a model-specific success record; until then show the highlighted high-risk default."
 }

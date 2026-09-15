@@ -2,11 +2,13 @@
 
 ## Cross-platform invariants
 
-Claude, Codex, WorkBuddy, and 豆包工作 use the same S0–S11 state graph, `pending_question` data, stable option values, mutation approvals, and evidence labels. Host-native controls may change presentation only. They cannot merge questions, omit options, preselect the recommendation, infer consent, or advance the state without a harness-accepted answer.
+Claude, Codex, WorkBuddy, and 豆包工作 use the same workflow revision, `pending_question` data, stable option values, mutation approvals, and evidence labels. Host-native controls may change presentation only. They cannot merge questions, omit options, preselect the recommendation, infer consent, or advance state without a harness-accepted answer.
+
+The model must render questions produced by `workflow-entry`, `workflow-answer`, and `workflow-action-result`. It must not use `set-question` to invent a prompt or next state. A pending question cannot be overwritten, and a pending action cannot advance until evidence is recorded.
 
 ## Question lock
 
-Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `type`, `prompt`, stable options, `required: true`, `answer_contract`, and `attempts`.
+Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `kind`, `prompt`, stable options, `required: true`, `attempts`, previous result, progress, blocker, remediation guidance, evidence, table rows, and optional visual/attachment data.
 
 Do not clear `pending_question` or enter the next state until the harness accepts the answer. On an invalid answer:
 
@@ -42,17 +44,26 @@ Every question includes `safe_exit` (shown as `0. 安全退出`). Include `back`
 
 Each interactive Agent reply contains, in order:
 
-1. Previous result or verified facts, if any.
-2. One question.
-3. Options with impact; mark one recommendation when useful.
-4. Exact accepted answer format.
+1. A three-to-six-row Markdown status table derived from evidence.
+2. The current blocker or risk.
+3. Actionable guidance for that blocker.
+4. Exactly one question.
+5. Options with impact; mark one recommendation when useful but never preselect it.
+6. Exact accepted-answer format.
+
+For a native modal/card, keep items 1–5 inside the component. If the host cannot place a table in the component, put it immediately above and repeat the most important blocker inside the component. Never leave the context only in hidden chain-of-thought or surrounding prose.
 
 The Agent may run already authorized work until the next decision, but every new conversational turn must end with a question and options. If the user asks a side question, answer briefly and then render the still-pending question again.
 
 ## Text fallback example
 
 ```text
-问题 S4-Q1：这是要操作的电视吗？
+| 状态 | 项目 | 结果 | 依据 |
+| --- | --- | --- | --- |
+| ✅ | 目标候选 | 小米电视 MiTV-ASTP0 | ADB 只读属性 |
+| ⚠️ | 用户确认 | 等待确认 | — |
+
+问题 TARGET-Q1：这是要操作的电视吗？
 
 1. 确认这台电视（推荐）——后续命令只发送到此设备
 2. 换一台——返回设备发现
@@ -60,3 +71,9 @@ The Agent may run already authorized work until the next decision, but every new
 
 请明确回复：1、2 或 0。
 ```
+
+## Status and selection contract
+
+The harness maps evidence to symbols: ✅ completed, ❌ attempted and incomplete after allowed recovery, ⚠️ partial/risky/user verification, ⏳ pending, and ⏭️ skipped. A successful command cannot substitute for on-site picture, sound, or remote-control confirmation.
+
+Use native multi-select when available. Text fallback accepts Chinese enumeration commas, Chinese/English commas, or whitespace and displays `1、2、3、4` as the example. Duplicate, unknown, disabled, or `0`-mixed selections are invalid. After selection, the next question lists application names and versions; confirmation starts download only, never installation.

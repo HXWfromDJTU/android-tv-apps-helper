@@ -55,6 +55,23 @@ class QuestionValidationTests(unittest.TestCase):
             validate_answer(question, "1、1")
         with self.assertRaisesRegex(AnswerError, "不可选择"):
             validate_answer(question, "2")
+
+    def test_short_text_accepts_displayed_back_index_and_zero_exit(self):
+        question = Question(
+            question_id="IP-Q1",
+            state_id="IP",
+            kind="short_text",
+            prompt="填写 IP",
+            options=(
+                Option("submit", "提交 IP", "CONNECT"),
+                Option("back", "返回", "DISCOVERY"),
+                Option("safe_exit", "安全退出", "END", shortcut="0"),
+            ),
+            input_prefix="IP:",
+            input_format="ipv4",
+        )
+        self.assertEqual(validate_answer(question, "2").value, "back")
+        self.assertEqual(validate_answer(question, "0").value, "safe_exit")
     def setUp(self):
         self.question = Question(
             question_id="S0-Q1",

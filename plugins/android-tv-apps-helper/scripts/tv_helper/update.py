@@ -3,12 +3,16 @@ from __future__ import annotations
 import json
 import os
 import re
+import hashlib
+import zipfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.request import Request, urlopen
 
 
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?$")
+RELEASES_API = "https://api.github.com/repos/HXWfromDJTU/android-tv-apps-helper/releases"
 
 
 def _parse(version: str) -> tuple[tuple[int, int, int], str | None]:
@@ -64,18 +68,86 @@ def record_update_decline(
     return updated
 
 
-def default_update_state_path() -> Path:
-    return Path.home() / ".local" / "share" / "android-tv-apps-helper" / "update-state.json"
+def select_latest_stable_release(releases: list[dict[str, Any]]) -> dict[str, Any]:
+    candidates = []
+    for release in releases:
+        if release.get("draft") or release.get("prerelease"):
+            continue
+        tag = str(release.get("tag_name", ""))
+        version = tag[1:] if tag.startswith("v") else tag
+        core, prerelease = _parse(version)
+        if prerelease is None:
+            candidates.append((core, version, release))
+    if not candidates:
+        raise ValueError("No stable GitHub release is available.")
+    _, version, release = max(candidates, key=lambda item: item[0])
+    return {"version": version, "release": release}
+
+
+def fetch_latest_stable_release(*, timeout: float = 5.0) -> dict[str, Any]:
+    request = Request(
+        RELEASES_API,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "android-tv-apps-helper"},
+    )
+    with urlopen(request, timeout=timeout) as response:
+        value = json.loads(response.read().decode("utf-8"))
+    if not isinstance(value, list):
+        raise ValueError("GitHub release response must be a list.")
+    return select_latest_stable_release(value)
+
+
+def validate_update_package(
+    path: Path,
+    *,
+    expected_sha256: str,
+    expected_version: str,
+    expected_platform: str,
+) -> dict[str, Any]:
+    target = Path(path)
+    actual_sha = hashlib.sha256(target.read_bytes()).hexdigest()
+    if actual_sha != expected_sha256:
+        raise ValueError("Update package SHA-256 does not match SHA256SUMS.")
+    with zipfile.ZipFile(target) as archive:
+        try:
+            skill = archive.read("android-tv-apps-helper/SKILL.md").decode("utf-8")
+        except KeyError as error:
+            raise ValueError("Update package is missing the expected Skill root.") from error
+    frontmatter = skill.split("---", 2)
+    if len(frontmatter) != 3:
+        raise ValueError("Update package Skill metadata is invalid.")
+    metadata = frontmatter[1]
+    required = {
+        "name": "android-tv-apps-helper",
+        "version": expected_version,
+        "platform": expected_platform,
+    }
+    for key, value in required.items():
+        if not re.search(rf"(?m)^{re.escape(key)}:\s*{re.escape(value)}\s*$", metadata):
+            raise ValueError(f"Update package {key} does not match {value}.")
+    return {
+        "skill_id": "android-tv-apps-helper",
+        "version": expected_version,
+        "platform": expected_platform,
+        "sha256": actual_sha,
+    }
+
+
+def default_update_state_path(platform: str = "shared") -> Path:
+    safe_platform = re.sub(r"[^a-z0-9-]", "-", platform.lower())
+    return Path.home() / ".local" / "share" / "android-tv-apps-helper" / f"update-state-{safe_platform}.json"
 
 
 class UpdateStateStore:
-    def __init__(self, path: Path | None = None):
-        self.path = Path(path) if path else default_update_state_path()
+    def __init__(self, path: Path | None = None, *, platform: str = "shared"):
+        self.path = Path(path) if path else default_update_state_path(platform)
 
     def read(self) -> dict[str, Any]:
         if not self.path.exists():
             return {}
-        value = json.loads(self.path.read_text(encoding="utf-8"))
+        try:
+            value = json.loads(self.path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as error:
+            return {"state_error": str(error)}
         if not isinstance(value, dict):
             raise ValueError("Update state must be a JSON object.")
         return value

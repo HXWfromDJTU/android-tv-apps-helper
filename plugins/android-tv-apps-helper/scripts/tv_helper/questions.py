@@ -88,6 +88,19 @@ def _match_option(question: Question, token: str) -> Option:
 
 
 def _validate_short_text(question: Question, raw: str) -> Answer:
+    normalized = _normalized_choice(raw)
+    for index, option in enumerate(question.options[1:], start=2):
+        accepted = {str(index), option.value, option.label}
+        if option.shortcut:
+            accepted.add(option.shortcut)
+        if normalized in accepted:
+            if not option.enabled:
+                raise AnswerError(f"此选项当前不可选择：{option.unavailable_reason}")
+            return Answer(
+                value=option.value,
+                next_state=option.next_state,
+                option_values=(option.value,),
+            )
     prefix = question.input_prefix
     if not prefix or not raw.strip().startswith(prefix):
         raise AnswerError(f"请使用 {prefix or '题目指定的'} 格式明确回答。")

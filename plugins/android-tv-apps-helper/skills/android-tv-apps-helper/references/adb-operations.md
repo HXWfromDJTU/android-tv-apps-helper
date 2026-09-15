@@ -8,7 +8,6 @@ Resolve the ADB binary explicitly. Prefer PATH, then the plugin-managed user dir
 adb version
 adb devices -l
 adb mdns services
-adb connect <ip>:5555
 adb -s <serial> shell getprop ro.product.manufacturer
 adb -s <serial> shell getprop ro.product.model
 adb -s <serial> shell getprop ro.build.version.release
@@ -18,6 +17,10 @@ adb -s <serial> shell df -h /data
 adb -s <serial> shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME
 adb -s <serial> shell pm list packages -3
 ```
+
+Automatic precheck stops here. `adb connect <ip>:5555`, subnet probes, and active port scans require a selected address or an approved bounded scan scope.
+
+When zero devices are found, the active component must include the actual attempt count and these user steps: confirm the same trusted Wi-Fi; open Settings → System/Device Preferences → About; select Build/version about seven times; enable ADB/network/wireless debugging; locate the TV IP; accept the RSA prompt. Show `assets/adb-enable-generic.svg` when the host supports images. Do not present an unrelated vendor screenshot as the user's model.
 
 Only the exact state `device` authorizes shell, install, push, pull, or package claims. A reachable TCP port, `unauthorized`, `offline`, or a TV prompt does not.
 
@@ -37,6 +40,12 @@ Do not add downgrade flags, uninstall an existing signature, clear data, or disa
 ## Launcher safety
 
 Record the original HOME package and recovery command before changes. Install and launch the replacement first. Require the user to confirm the launcher renders, Home works, and the remote can navigate. Only then offer default-launcher or component-disable actions as separate choices. Never uninstall the original system launcher.
+
+If no verified automatic Home/wallpaper operation exists for the detected system, offer the matched manual remote-control path. Do not guess shell commands or UI coordinates. Wallpaper and Home-key evidence remain separate.
+
+## Shutdown safety
+
+Before the final question, capture the device identity and match `data/device-guides.json`. Ask the user to turn off ADB/network/wireless debugging and the developer-options master switch using the displayed path. Never silently disable it remotely. A disconnect is only limited evidence; if the user reports both switches closed while the same serial still answers a new read-only ADB check, re-render `FINISH-SAFETY-Q1` with the conflict.
 
 ## Logs and retry
 

@@ -16,6 +16,8 @@ PLUGIN_SCRIPTS = (
 sys.path.insert(0, str(PLUGIN_SCRIPTS))
 
 from tv_helper.cli import main
+from tv_helper.session import SessionStore
+from tv_helper.workflow import build_question
 
 
 class CliTests(unittest.TestCase):
@@ -74,6 +76,98 @@ class CliTests(unittest.TestCase):
             )
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(output)["current_state"], "S1")
+
+    def test_workflow_commands_generate_and_retain_the_fixed_first_question(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            session = root / "session.json"
+            precheck = root / "precheck.json"
+            precheck.write_text(
+                json.dumps(
+                    {
+                        "status": "attention",
+                        "blocker": "没有发现设备",
+                        "rows": [{"status": "attention", "item": "设备", "result": "0 台"}],
+                        "active_scan_performed": False,
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            self.run_cli(["init-session", str(session), "--surface", "text_menu"])
+
+            code, output, error = self.run_cli(
+                ["workflow-start", str(session), "--precheck", str(precheck)]
+            )
+
+            self.assertEqual((code, error), (0, ""))
+            started = json.loads(output)
+            self.assertEqual(started["question"]["question_id"], "PRECHECK-WIFI-Q1")
+            self.assertIn("| 状态 |", started["rendered"])
+
+            code, output, error = self.run_cli(
+                [
+                    "workflow-answer",
+                    str(session),
+                    "--question-id",
+                    "PRECHECK-WIFI-Q1",
+                    "--value",
+                    "继续",
+                ]
+            )
+            self.assertEqual((code, error), (2, ""))
+            rejected = json.loads(output)
+            self.assertFalse(rejected["accepted"])
+            self.assertEqual(rejected["question"]["question_id"], "PRECHECK-WIFI-Q1")
+
+    def test_workflow_action_result_requires_evidence_and_emits_next_question(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            session = root / "session.json"
+            evidence = root / "evidence.json"
+            self.run_cli(["init-session", str(session), "--surface", "text_menu"])
+            store = SessionStore(session)
+            store.update_fields(current_state="DOWNLOAD-CONFIRM", selected_apps=["smarttube"])
+            store.set_question(build_question("DOWNLOAD-CONFIRM", store.read()))
+            code, output, error = self.run_cli(
+                ["workflow-answer", str(session), "--question-id", "DOWNLOAD-CONFIRM-Q1", "--value", "1"]
+            )
+            self.assertEqual((code, error), (0, ""))
+            self.assertEqual(json.loads(output)["action_required"]["action_id"], "DOWNLOAD-ACTION")
+            evidence.write_text(json.dumps({"result": "下载和身份校验通过"}), encoding="utf-8")
+            code, output, error = self.run_cli(
+                [
+                    "workflow-action-result", str(session), "--action-id", "DOWNLOAD-ACTION",
+                    "--status", "completed", "--evidence", str(evidence),
+                ]
+            )
+            self.assertEqual((code, error), (0, ""))
+            self.assertEqual(json.loads(output)["question"]["question_id"], "DOWNLOAD-VERIFY-Q1")
+
+    def test_prepare_device_context_persists_model_guide_and_highlighted_risks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            session = root / "session.json"
+            identity = root / "identity.json"
+            identity.write_text(
+                json.dumps({"manufacturer": "Other", "model": "TV-1"}),
+                encoding="utf-8",
+            )
+            self.run_cli(["init-session", str(session), "--surface", "text_menu"])
+            data_root = Path(__file__).parents[1] / "plugins" / "android-tv-apps-helper" / "data"
+            code, output, error = self.run_cli(
+                [
+                    "prepare-device-context", str(session), "--identity", str(identity),
+                    "--guides", str(data_root / "device-guides.json"),
+                    "--compatibility", str(data_root / "compatibility.json"),
+                ]
+            )
+            self.assertEqual((code, error), (0, ""))
+            result = json.loads(output)
+            self.assertEqual(result["guide"]["id"], "generic-android-tv")
+            saved = SessionStore(session).read()
+            self.assertEqual(saved["device_identity"]["model"], "TV-1")
+            self.assertEqual(saved["compatibility_matches"][0]["risk"], "high_risk")
 
     def test_session_records_supported_host_and_local_execution_context(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -87,6 +87,8 @@ def create_install_plan(
 
 
 def approve_plan(session: SessionStore, plan: dict[str, Any], *, confirmation: str) -> None:
+    if plan.get("requires_revalidation"):
+        raise ApkError("The migrated install plan requires revalidation before approval.")
     if confirmation != "confirm_install":
         raise ApkError("The install plan requires the explicit confirm_install answer.")
     _require_unchanged_plan(plan)
@@ -102,8 +104,12 @@ def install_approved(
     *,
     device_state: str,
 ) -> str:
+    if plan.get("requires_revalidation"):
+        raise ApkError("The migrated install plan requires revalidation before installation.")
     _require_unchanged_plan(plan)
     saved = session.read().get("approved_plan")
+    if isinstance(saved, dict) and saved.get("requires_revalidation"):
+        raise ApkError("The saved install plan requires revalidation before installation.")
     if not saved or saved.get("status") != "approved" or saved.get("plan_id") != plan.get("plan_id"):
         raise ApkError("This exact install plan has not been approved.")
     if saved.get("serial") != plan.get("serial"):

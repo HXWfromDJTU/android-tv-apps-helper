@@ -29,7 +29,7 @@ class InteractionFrame:
     guidance: tuple[str, ...]
     question_id: str
     question: str
-    options: tuple[tuple[str, str, str], ...]
+    options: tuple[tuple[str, str, str] | tuple[str, str, str, str | None], ...]
     accepted_answer: str
 
 
@@ -69,8 +69,11 @@ def render_markdown(frame: InteractionFrame) -> str:
         lines.extend(("", "处理指引："))
         lines.extend(f"{index}. {item}" for index, item in enumerate(frame.guidance, 1))
     lines.extend(("", f"问题 {frame.question_id}：{frame.question}", ""))
-    for index, (_, label, description) in enumerate(frame.options, 1):
+    for index, option in enumerate(frame.options, 1):
+        _, label, description = option[:3]
+        shortcut = option[3] if len(option) == 4 else None
         suffix = f"——{description}" if description else ""
-        lines.append(f"{index}. {label}{suffix}")
+        display_index = shortcut or str(index)
+        lines.append(f"{display_index}. {label}{suffix}")
     lines.extend(("", frame.accepted_answer))
     return "\n".join(lines) + "\n"

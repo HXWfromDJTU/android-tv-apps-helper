@@ -9,10 +9,44 @@ from tv_helper.update import (
     compare_stable_versions,
     record_update_decline,
     should_prompt_update,
+    select_latest_stable_release,
+    validate_update_package,
 )
 
 
 class UpdateTests(unittest.TestCase):
+    def test_latest_release_selection_ignores_drafts_and_prereleases(self):
+        releases = [
+            {"tag_name": "v0.4.0-rc.1", "draft": False, "prerelease": True, "assets": []},
+            {"tag_name": "v0.3.0", "draft": False, "prerelease": False, "assets": [{"name": "SHA256SUMS"}]},
+            {"tag_name": "v0.5.0", "draft": True, "prerelease": False, "assets": []},
+        ]
+        self.assertEqual(select_latest_stable_release(releases)["version"], "0.3.0")
+
+    def test_update_zip_requires_expected_skill_platform_version_and_hash(self):
+        import hashlib
+        import zipfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "candidate.zip"
+            content = "---\nname: android-tv-apps-helper\nversion: 0.3.0\nplatform: workbuddy\n---\n"
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("android-tv-apps-helper/SKILL.md", content)
+            digest = hashlib.sha256(package.read_bytes()).hexdigest()
+            result = validate_update_package(
+                package,
+                expected_sha256=digest,
+                expected_version="0.3.0",
+                expected_platform="workbuddy",
+            )
+            self.assertEqual(result["skill_id"], "android-tv-apps-helper")
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                validate_update_package(
+                    package,
+                    expected_sha256="0" * 64,
+                    expected_version="0.3.0",
+                    expected_platform="workbuddy",
+                )
     def test_stable_semver_comparison_ignores_prerelease_by_default(self):
         self.assertEqual(compare_stable_versions("0.2.0", "0.3.0"), 1)
         self.assertEqual(compare_stable_versions("0.3.0", "0.3.0"), 0)

@@ -5,41 +5,62 @@ description: Use when a user wants to connect an Android TV over ADB, install or
 
 # Android TV Apps Helper
 
-Guide one verified Android TV through a stateful, reversible workflow. The Agent owns inspection and command execution; the user answers one bounded question at each decision.
+Guide one Android TV through a deterministic, reversible workflow. The Python harness owns question wording, legal transitions, tables, validation, and approvals. The model supplies verified observations only; it must not invent questions, labels, next states, success symbols, device identity, compatibility, or download sources.
 
-## Host preflight
+## Start every invocation
 
-Read [references/platforms.md](references/platforms.md) before creating the session. Identify Claude, Codex, WorkBuddy, or Doubao Work; require a local-computer execution context with local shell and LAN access; locate the installed Skill root; then initialize the session with the matching `--host-platform`. A cloud computer or conversation without local command execution must stop before S0 and offer one bounded question to switch context, retry, or exit.
+Read [references/platforms.md](references/platforms.md), [references/interaction-contract.md](references/interaction-contract.md), and [references/workflow.md](references/workflow.md). Require a local-computer context with local shell and LAN access. Cloud-only execution stops before ADB and shows one bounded switch/retry/exit question.
 
-## Required interaction
+Create a checkpoint with:
 
-Read [references/interaction-contract.md](references/interaction-contract.md) before the first reply. Every interactive reply ends with exactly one required question and explicit options. Prefer a supported host-native form; fall back to the same numbered text menu. Never preselect a recommendation or advance past an invalid, ambiguous, missing, stale, or malformed answer.
+```sh
+python3 ../../scripts/tv-helper init-session <artifact-dir>/session.json --surface <structured_form|text_menu> --host-platform <claude|codex|workbuddy|doubao-work> --execution-context local_computer
+```
 
-Create a session checkpoint with `../../scripts/tv-helper init-session <output>/session.json --surface <structured_form|text_menu> --host-platform <claude|codex|workbuddy|doubao-work> --execution-context local_computer`. Persist each pending question before showing it and validate the submitted answer through the harness.
+At the first safe point, use the harness entry command. It checks the official stable GitHub Release and then runs the automatic limited read-only precheck. A declined update suppresses every update reminder for 24 hours using stable user-data state outside the installed Skill. Never delete the working version before the new host package, Skill ID, version, and SHA-256 are validated. The precheck may locate ADB and run `adb version` and `adb devices -l`; it may not scan a subnet or connect to an unselected address.
 
-## Workflow
+```sh
+python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.0
+```
 
-Read [references/workflow.md](references/workflow.md), then follow its current state rather than improvising a new questionnaire:
+Render the harness output as a native required card when supported; otherwise show its Markdown unchanged. The first business question follows the completed precheck. Never ask whether to begin precheck.
 
-1. Ask whether to begin the read-only preflight.
-2. Locate ADB, discover devices, resolve `unauthorized` or `offline`, show the device identity, and require target confirmation.
-3. Inspect Android version, ABI, storage, launcher, and installed packages.
-4. Ask the user to choose one task: recommended setup, selected apps, local APK, launcher cleanup, diagnosis, or finish.
-5. Validate prerequisites and show the exact numbered plan, impact, evidence, and recovery path.
-6. Require explicit consent before every mutation class not already covered by the approved plan.
-7. Execute one item at a time, verify it, and ask for on-site picture, sound, and remote acceptance.
-8. Show a final report and ask whether to finish or continue.
+## Continue a question
 
-If the network, target serial, APK digest, action, or risk changes, invalidate prior approval and return to the matching question.
+Submit the exact visible answer through:
+
+```sh
+python3 ../../scripts/tv-helper workflow-answer <artifact-dir>/session.json --question-id <current-id> --value <answer>
+```
+
+On exit code 2, render the returned same question, table, blocker, and guidance. Do not execute any later action. Do not replace a pending question. Every reply contains the previous result/progress inside the active component, exactly one required question, mutually exclusive options, and an accepted-answer format.
+
+When the result contains `action_required`, execute only that approved action. Record real stdout/stderr, exit code, inspected identity/hash, or read-only check in an evidence JSON object, then submit it before displaying any completion state:
+
+```sh
+python3 ../../scripts/tv-helper workflow-action-result <artifact-dir>/session.json --action-id <exact-action-id> --status <completed|failed|attention> --evidence <artifact-dir>/action-evidence.json
+```
+
+Never move past a pending action by writing the session or merely saying it succeeded.
 
 ## Operations
 
-Read [references/adb-operations.md](references/adb-operations.md) for connection, inspection, install, launcher, verification, and recovery commands. Every device command uses `adb -s <verified-serial>`. Do not root, flash, factory-reset, silently clear data, or remove/disable the current launcher before its replacement passes launch, Home-key, and remote-control acceptance.
+Read [references/adb-operations.md](references/adb-operations.md) before device commands and [references/apk-policy.md](references/apk-policy.md) before downloads. Every device command uses `adb -s <verified-serial>`. Downloads, installation, Home-key changes, and wallpaper changes have separate confirmations. Keep the factory launcher installed and enabled; never root, flash, factory-reset, silently clear data, or use an unknown APK mirror.
 
-Read [references/apk-policy.md](references/apk-policy.md) before resolving or installing an APK. Use `../../catalog/apps.json` as the source of truth. Clash Meta must remain on its official GitHub Release. A project-hosted APK must have a verified digest and redistribution evidence. Treat `pending_rights` and `pending_file` as unavailable; explain the exact status and present options to skip, use an authorized local file, or return.
+Use `../../catalog/apps.json` as the application source of truth.
 
-## Evidence and stopping
+Use the fixed task labels and application table. Multi-select uses the native control or numbers such as `1、2、3`; then confirm the resolved application names and versions before downloading. Downloading does not approve installation. Dangbei Market uses only its publisher-linked official source and never asks an ordinary user to find an APK.
 
-Keep file validation, installation, launch, runtime signals, and on-site acceptance separate. Only user-confirmed picture, sound, and remote operation supports “正常运作”. A safe automatic retry may run once. After repeated failure, preserve logs, mark the item incomplete, and ask whether to skip, choose another route, or finish.
+After reading the target identity, run `prepare-device-context` with `data/device-guides.json` and `data/compatibility.json`. After Emotn UI is verified installed, separately ask about the default launcher and wallpaper. Custom wallpaper requires a valid image plus apply confirmation. Every wallpaper question states that vendor firmware may reset it after days, reboot, or update. Show the verified TV identity and independent Home/wallpaper risks before approval.
 
-End with changed items, evidence level, incomplete items, intentionally preserved items, recovery commands, and the artifact directory. Ask a final explicit question before telling the user to close ADB debugging.
+## Evidence and finish
+
+Every interactive and final reply is table-first. Status symbols come from harness evidence: ✅ completed, ❌ attempted but incomplete, ⚠️ attention or user verification, ⏳ pending, ⏭️ skipped. Keep file validation, installation, launch, runtime signal, and on-site picture/sound/remote acceptance separate.
+
+All exits after ADB use route through `FINISH-SAFETY-Q1`. Match the device guide and ask the user to close ADB/network/wireless debugging and the developer-options master switch. Disconnection alone is not proof. If ADB still responds after the user says it is closed, keep the same question and show the conflict.
+
+After reaching a terminal state, render and save the harness final report:
+
+```sh
+python3 ../../scripts/tv-helper final-report <artifact-dir>/session.json --out <artifact-dir>/final-report.md
+```

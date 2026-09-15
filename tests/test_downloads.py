@@ -35,11 +35,23 @@ class DownloadTests(unittest.TestCase):
         self.assertFalse(redirect_allowed("https://example.invalid/file.apk", allowed))
 
     def test_download_identity_rejects_package_or_signature_change(self):
-        expected = {"package": "com.dangbeimarket", "version_name": "6.0.7", "signing_sha256": "a" * 64}
+        expected = {
+            "package": "com.dangbeimarket",
+            "version_name": "6.0.7",
+            "version_code": "607",
+            "min_sdk": 21,
+            "abi": "armeabi-v7a",
+            "signing_sha256": "a" * 64,
+            "size": 123,
+            "sha256": "c" * 64,
+        }
         with self.assertRaisesRegex(DownloadError, "package"):
             validate_download_identity(expected, {**expected, "package": "evil.example"})
         with self.assertRaisesRegex(DownloadError, "signing_sha256"):
             validate_download_identity(expected, {**expected, "signing_sha256": "b" * 64})
+        for field, wrong in (("version_code", "999"), ("min_sdk", 99), ("abi", "x86")):
+            with self.subTest(field=field), self.assertRaisesRegex(DownloadError, field):
+                validate_download_identity(expected, {**expected, field: wrong})
 
 
 if __name__ == "__main__":

@@ -3,5 +3,13 @@
   "skill_id": "android-tv-apps-helper",
   "stable_version": "0.3.0",
   "release_url": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.0",
-  "repository": "HXWfromDJTU/android-tv-apps-helper"
+  "repository": "HXWfromDJTU/android-tv-apps-helper",
+  "minimum_compatible_version": "0.2.0",
+  "sha256_source": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/SHA256SUMS",
+  "platform_assets": {
+    "workbuddy": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/android-tv-apps-helper-workbuddy-v0.3.0.zip",
+    "doubao-work": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/android-tv-apps-helper-doubao-work-v0.3.0.zip",
+    "claude": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.0/android-tv-apps-helper-claude-v0.3.0.zip",
+    "codex": "https://github.com/HXWfromDJTU/android-tv-apps-helper"
+  }
 }

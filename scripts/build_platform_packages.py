@@ -21,9 +21,10 @@ def _manifest_version() -> str:
 
 
 def _frontmatter(platform: str, version: str) -> str:
-    common = """---
+    common = f"""---
 name: android-tv-apps-helper
 description: Use when connecting an Android TV over ADB, installing or inspecting TV APKs, simplifying the launcher, or diagnosing app launch, picture, sound, or remote-control problems.
+platform: {platform}
 """
     if platform == "workbuddy":
         extra = f"""display_name: Android TV Apps Helper
@@ -78,13 +79,13 @@ def _skill_body(platform: str) -> str:
     body = body.replace("../../catalog/apps.json", "references/apps.json")
     if platform == "claude":
         body = body.replace(
-            "`../../scripts/tv-helper",
-            '`python3 "${CLAUDE_SKILL_DIR}/scripts/tv-helper"',
+            "python3 ../../scripts/tv-helper",
+            'python3 "${CLAUDE_SKILL_DIR}/scripts/tv-helper"',
         )
     else:
         body = body.replace(
-            "`../../scripts/tv-helper",
-            "`python3 scripts/tv-helper",
+            "python3 ../../scripts/tv-helper",
+            "python3 scripts/tv-helper",
         )
     return body
 
@@ -112,6 +113,16 @@ def _package_files(platform: str, version: str) -> dict[str, tuple[bytes, int]]:
             "../../catalog/apps.json", "apps.json"
         )
         files[f"references/{source.name}"] = (content.encode("utf-8"), 0o644)
+
+    data = PLUGIN_ROOT / "data"
+    for source in sorted(path for path in data.rglob("*") if path.is_file()):
+        relative = source.relative_to(data).as_posix()
+        files[f"data/{relative}"] = (source.read_bytes(), 0o644)
+
+    assets = SKILL_ROOT / "assets"
+    for source in sorted(path for path in assets.rglob("*") if path.is_file()):
+        relative = source.relative_to(assets).as_posix()
+        files[f"assets/{relative}"] = (source.read_bytes(), 0o644)
 
     scripts = PLUGIN_ROOT / "scripts"
     for source in sorted(path for path in scripts.rglob("*") if path.is_file()):

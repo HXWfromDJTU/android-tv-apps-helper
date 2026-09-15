@@ -25,8 +25,21 @@ SHARED_CORE = {
     "scripts/tv_helper/apk.py",
     "scripts/tv_helper/catalog.py",
     "scripts/tv_helper/cli.py",
+    "scripts/tv_helper/compatibility.py",
+    "scripts/tv_helper/downloads.py",
+    "scripts/tv_helper/guides.py",
+    "scripts/tv_helper/precheck.py",
+    "scripts/tv_helper/presentation.py",
     "scripts/tv_helper/questions.py",
+    "scripts/tv_helper/report.py",
     "scripts/tv_helper/session.py",
+    "scripts/tv_helper/update.py",
+    "scripts/tv_helper/workflow.py",
+    "data/copy.zh-CN.json",
+    "data/device-guides.json",
+    "data/compatibility.json",
+    "data/update-manifest.json",
+    "assets/adb-enable-generic.svg",
 }
 
 
