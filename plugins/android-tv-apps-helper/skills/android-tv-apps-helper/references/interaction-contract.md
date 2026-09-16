@@ -13,6 +13,8 @@ Only render questions from `workflow-entry`, `workflow-native-answer`, `workflow
 3. The host's normal supplemental/Other input appears after the options; never replace the choices with a request to type numbers. Do not invent an Other option or fake HTML UI.
 4. Submit the actual returned label/value through `workflow-native-answer` with the current `question_id` and `presentation_id`. For an actual multi-selection, use `--values-json '["label A","label B"]'` rather than joining display labels.
 
+Codex capability selection follows platforms.md, including `request_user_input_async`. When `response_delivery=async_user_message`, successful tool invocation only delivers the question: yield and wait, preserving its question/presentation IDs. No default choice is submitted automatically. Do not attach late replies to a newer token.
+
 A question is `required`. Closing a card, a preselected recommendation, an attachment, “继续”, or unrelated supplemental prose is not consent. On exit code 2, show the returned error with the context and invoke the returned native component again; do not execute later actions.
 
 ## Pagination and selection

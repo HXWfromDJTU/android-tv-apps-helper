@@ -99,7 +99,9 @@ Always display `presentation.context_markdown` in visible conversation immediate
     else:
         adapter = """## Host-native interaction adapter
 
-Always display `presentation.context_markdown` in visible conversation immediately before the control. Keep the card title/question limited to the supplied question; do not append results, risks or guidance. Call `request_user_input` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required` and the tool is exposed. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is not exposed in the current Codex mode, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and reason `native_tool_not_exposed` to obtain one native retry or a native_blocked pause; never use numbered text choices.
+Inspect actual callable tools and mode restrictions before initialization. Prefer `request_user_input_async` when available; pass `--native-tool request_user_input_async` to `init-session`. Otherwise select `request_user_input` only if callable in the current mode. Read references/platforms.md for capability recovery; do not assume Default mode has no native UI or require Plan without checking both tools.
+
+Display `presentation.context_markdown` before calling `presentation.tool_name` with exact `tool_input`. Keep the question short. For `response_delivery=async_user_message`, the tool returns before the user answers: preserve the current question/presentation IDs, yield and wait for the actual user reply. Never treat tool success, preselection, silence or an unrelated message as consent. Submit the actual selection through `workflow-native-answer`; do not print a numbered-text menu. Record only observed failures after checking both native tools.
 
 """
     return body.replace("# Android TV Apps Helper\n", "# Android TV Apps Helper\n\n" + adapter, 1)
@@ -138,6 +140,9 @@ def _package_files(platform: str, version: str) -> dict[str, tuple[bytes, int]]:
     for source in sorted(path for path in assets.rglob("*") if path.is_file()):
         relative = source.relative_to(assets).as_posix()
         files[f"assets/{relative}"] = (source.read_bytes(), 0o644)
+
+    for source in sorted((SKILL_ROOT / "agents").glob("*.yaml")):
+        files[f"agents/{source.name}"] = (source.read_bytes(), 0o644)
 
     scripts = PLUGIN_ROOT / "scripts"
     for source in sorted(path for path in scripts.rglob("*") if path.is_file()):

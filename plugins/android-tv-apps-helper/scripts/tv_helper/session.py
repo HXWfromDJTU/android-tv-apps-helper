@@ -28,12 +28,15 @@ class SessionStore:
         execution_context: str = "local_computer",
         skill_root: str | None = None,
         python_command: str = "python3",
+        native_tool: str | None = None,
     ) -> "SessionStore":
         if interaction_surface not in {"auto", "structured_form", "text_menu"}:
             raise ValueError("interaction_surface must be auto, structured_form or text_menu")
         supported_platforms = {"claude", "codex", "workbuddy", "doubao-work"}
         if host_platform not in supported_platforms:
             raise ValueError(f"Unsupported host_platform: {host_platform}")
+        from .presentation import resolve_native_tool
+        resolved_tool = resolve_native_tool(host_platform, native_tool)
         if execution_context != "local_computer":
             raise ValueError(
                 "Android TV ADB requires execution_context=local_computer; "
@@ -48,6 +51,7 @@ class SessionStore:
                 "created_at": _timestamp(),
                 "updated_at": _timestamp(),
                 "host_platform": host_platform,
+                "native_tool": resolved_tool,
                 "execution_context": execution_context,
                 "interaction_surface": resolved_surface,
                 "interaction_surface_requested": requested_surface,
@@ -62,7 +66,7 @@ class SessionStore:
                 "candidate_ip": None,
                 "approved_plan": None,
                 "history": [],
-                "workflow_revision": "v0.3.3",
+                "workflow_revision": "v0.3.4",
                 "session_sequence": 0,
                 "interaction_capabilities": {
                     "native_status": "pending" if resolved_surface == "structured_form" else "unavailable",
@@ -118,7 +122,7 @@ class SessionStore:
         migrated = dict(data)
         migrated["schema_version"] = 3
         defaults = {
-            "workflow_revision": "v0.3.3",
+            "workflow_revision": "v0.3.4",
             "session_sequence": 0,
             "interaction_capabilities": {},
             "update_check": {},
@@ -148,7 +152,7 @@ class SessionStore:
             migrated["approved_plan"] = {
                 **migrated["approved_plan"],
                 "requires_revalidation": True,
-                "revalidation_reason": "Session migrated to workflow revision v0.3.3.",
+                "revalidation_reason": "Session migrated to workflow revision v0.3.4.",
             }
         return migrated
 
@@ -211,10 +215,14 @@ class SessionStore:
         data["interaction_capabilities"] = {"native_status": "pending", "last_failure": data.get("interaction_capabilities")}
         self._write(data)
 
-    def resume_native(self, question_id: str) -> None:
+    def resume_native(self, question_id: str, *, native_tool: str | None = None) -> None:
         data = self.read()
         if (data.get("pending_question") or {}).get("question_id") != question_id:
             raise AnswerError("恢复目标不是当前问题。")
+        if native_tool is not None:
+            from .presentation import resolve_native_tool
+            data["native_tool"] = resolve_native_tool(data["host_platform"], native_tool)
+            self._write(data)
         self.update_interaction_ui(data.get("interaction_ui") or {})
 
     def set_question(self, question: Question) -> None:

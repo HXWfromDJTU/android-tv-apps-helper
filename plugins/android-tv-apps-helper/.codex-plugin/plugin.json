@@ -1,6 +1,6 @@
 {
   "name": "android-tv-apps-helper",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Guided Android TV ADB setup, APK installation, verification, and recovery.",
   "author": {
     "name": "SwainWong",
@@ -17,6 +17,9 @@
     "longDescription": "A stateful, safety-gated workflow for connecting an Android TV over ADB, choosing apps, validating APK provenance, installing approved changes, and recording verification and recovery evidence.",
     "developerName": "SwainWong",
     "category": "Productivity",
+    "composerIcon": "./assets/ra-icon.png",
+    "logo": "./assets/ra-icon.png",
+    "logoDark": "./assets/ra-icon.png",
     "capabilities": ["Interactive", "Local Automation"],
     "defaultPrompt": [
       "启动 Android TV Apps Helper",

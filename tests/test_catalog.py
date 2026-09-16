@@ -70,10 +70,10 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "sha256"):
             validate_catalog(broken)
 
-    def test_eligible_downloads_exclude_pending_entries(self):
+    def test_eligible_downloads_include_unreviewed_entries_with_urls(self):
         catalog = load_catalog(self.catalog_path)
         ids = {app["id"] for app in eligible_downloads(catalog)}
-        self.assertEqual(ids, {"clash-meta", "smarttube"})
+        self.assertEqual(ids, {"clash-meta", "smarttube", "dangbei-market", "emotn-ui"})
 
 
 if __name__ == "__main__":

@@ -14,8 +14,13 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 
 - Use the repository plugin/marketplace or the canonical project Skill.
 - Resolve the harness relative to the plugin Skill and initialize with `--host-platform codex --execution-context local_computer`.
-- Call `request_user_input` whenever `presentation.mode` is `native_required`. If it is not exposed, record `native_tool_not_exposed` with the returned question/presentation/tool identity, then show the blocked-status table and pause. Never substitute numbered text choices.
-- A repository/plugin install must be removed and reinstalled from the v0.3.3 candidate for live acceptance; package presence alone is not invocation evidence.
+- Inspect the tools actually exposed to this conversation and their mode restrictions. Prefer `request_user_input_async` when available, including in Default mode; initialize with `--native-tool request_user_input_async`. Its schema is `{"questions":[{"title":"short question","options":["label A","label B"]}]}`. Do not pass sync-only fields (`id`, `header`, `question`, object-valued options). Call the real tool, including its namespace when the host exposes one.
+- If async is absent, use `request_user_input` only if exposed AND permitted in the current mode; initialize with `--native-tool request_user_input`. Never assume every Codex build exposes async, or that Default universally lacks native UI. A Skill cannot enable a missing host tool or switch operating modes itself.
+- For `response_delivery=async_user_message`, the call acknowledges delivery immediately. Save the current question/presentation IDs, yield and await the actual user message. Submit only the explicit selected label (or valid input-stage content) with those IDs. Unanswered/preselected/closed components, unrelated messages and acknowledgements do not advance the workflow. A late answer to an older presentation must not be relabeled with the new token.
+- Async lacks per-option description fields. Its context includes a short explanation table for visible choices; display it without moving the text into the title. This table is not a substitute for calling the native component.
+- To recover a v0.3.3 checkpoint blocked on the sync tool when async is actually callable: `resume-native <session> --question-id <current-id> --native-tool request_user_input_async`. This preserves the question, precheck, selection state and approvals but issues a new presentation token. Use this only after finding the alternate available tool, not to reset retries indefinitely.
+- Call the returned `presentation.tool_name` with its exact `tool_input` for every decision. Before declaring native UI unavailable, check BOTH Codex tools. If neither is callable, record `native_tool_not_exposed` with exact current identities, show the blocked table and pause. Explain the actual missing capability; suggest Plan only when its synchronous tool is known to be available. Never substitute numbered text choices.
+- A repository/plugin install must be removed and reinstalled from the v0.3.4 candidate for live acceptance; package presence alone is not invocation evidence.
 
 ## WorkBuddy
 
@@ -23,7 +28,7 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 - Locate the installed Skill root, run `python3 scripts/tv-helper`, and initialize with `--host-platform workbuddy --execution-context local_computer`.
 - Call `AskUserQuestion` with the exact returned `presentation.tool_input` whenever `presentation.mode` is `native_required`. A prose list is a failure, not an equivalent rendering.
 - Treat the installed-Skill list and a new-conversation invocation as evidence; a download message alone is not installation evidence.
-- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.3`.
+- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.4`.
 
 ## 豆包工作
 

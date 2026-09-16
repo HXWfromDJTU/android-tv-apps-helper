@@ -57,7 +57,7 @@ class PlatformPackageTests(unittest.TestCase):
             hashes_by_platform: dict[str, dict[str, str]] = {}
 
             for platform in PLATFORMS:
-                output = temp / f"android-tv-apps-helper-{platform}-v0.3.3.zip"
+                output = temp / f"android-tv-apps-helper-{platform}-v0.3.4.zip"
                 result = subprocess.run(
                     [
                         sys.executable,
@@ -75,7 +75,7 @@ class PlatformPackageTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 metadata = json.loads(result.stdout)
                 self.assertEqual(metadata["platform"], platform)
-                self.assertEqual(metadata["version"], "0.3.3")
+                self.assertEqual(metadata["version"], "0.3.4")
 
                 with zipfile.ZipFile(output) as archive:
                     names = set(archive.namelist())
@@ -93,7 +93,7 @@ class PlatformPackageTests(unittest.TestCase):
 
                     skill = archive.read(ROOT + "SKILL.md").decode("utf-8")
                     self.assertIn("name: android-tv-apps-helper", skill)
-                    self.assertIn("version: 0.3.3", skill)
+                    self.assertIn("version: 0.3.4", skill)
                     frontmatter = skill.split("---", 2)[1]
                     top_level_keys = {
                         line.split(":", 1)[0]
@@ -107,7 +107,7 @@ class PlatformPackageTests(unittest.TestCase):
                         self.assertIn("Call `AskUserQuestion`", skill)
                     if platform == "codex":
                         self.assertNotIn("allowed-tools:", frontmatter)
-                        self.assertIn("Call `request_user_input`", skill)
+                        self.assertIn("request_user_input_async", skill)
                     self.assertIn("--surface auto", skill)
                     self.assertIn("record-surface-failure", skill)
                     if platform == "claude":
@@ -209,7 +209,7 @@ class PlatformPackageTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             metadata = json.loads(result.stdout)
-            self.assertEqual(metadata["version"], "0.3.3")
+            self.assertEqual(metadata["version"], "0.3.4")
             self.assertEqual(len(metadata["artifacts"]), 4)
             lines = (output_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(lines), 4)

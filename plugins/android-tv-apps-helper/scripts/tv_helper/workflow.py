@@ -11,6 +11,8 @@ from .presentation import render_question_markdown
 from .questions import AnswerError, Option, Question, validate_answer
 from .session import SessionStore
 from .update import UpdateStateStore, record_update_decline, should_prompt_update
+from .catalog import download_location
+from .downloads import app_selection_rows
 
 
 ADB_GUIDANCE = (
@@ -92,16 +94,23 @@ def _download_expectations(selected: tuple[str, ...]) -> list[dict[str, Any]]:
     expectations: list[dict[str, Any]] = []
     for app_id in selected:
         app = by_id.get(app_id)
-        if not app or len(app.get("assets", ())) != 1:
-            raise ValueError(f"{app_id} 没有唯一且已验证的下载文件。")
-        asset = app["assets"][0]
+        if not app:
+            raise ValueError(f"未知应用：{app_id}")
+        if len(app.get("assets", ())) > 1:
+            raise ValueError(f"{app_id} 有多个包体，需先确定匹配设备的文件。")
+        asset = next(iter(app.get("assets", ())), {})
+        distribution = app.get("distribution") or {}
+        url = download_location(app)
         expectations.append(
             {
                 "app_id": app_id,
-                "url": asset["url"],
-                "size": asset["size"],
-                "sha256": asset["sha256"],
-                "package": app.get("expected_package"),
+                "url": url,
+                "resolve_required": not bool(url),
+                "search_query": f"{app['name']} {app.get('version', '')} APK 下载",
+                "publisher_page": distribution.get("publisher_page"),
+                "size": asset.get("size"),
+                "sha256": asset.get("sha256"),
+                "package": app.get("expected_package") or distribution.get("expected_package"),
                 "version_name": app.get("expected_version_name"),
             }
         )
@@ -404,35 +413,22 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
         )
     if state == "APPS":
         installed = context.get("installed_apps", {})
-        app_defs = (
-            ("clash-meta", "Clash Meta for Android", "2.11.33", "网络代理工具", True, "来自 MetaCubeX 官方 GitHub Release"),
-            ("smarttube", "SmartTube", "32.10 Stable", "在线视频播放器", True, "来自本项目已核验 Release 资源"),
-            ("dangbei-market", "当贝市场", "6.0.7", "电视应用市场", False, "官方地址已记录，包体身份待项目维护者验证；可返回任务菜单检查官方来源"),
-            ("emotn-ui", "Emotn UI", "1.1.0.1", "电视桌面和壁纸", False, "当前没有可公开分发的已验证安装源；已安装设备仍可进入桌面设置"),
-            ("jiashitong", "佳视通", "1.0.0", "观看电视直播内容", False, "安装文件和公开分发许可尚未核验"),
-            ("chengfeng-tv", "乘风TV", "1.0.3", "观看电视直播内容", False, "安装文件和公开分发许可尚未核验"),
-            ("polang-tv", "魄狼TV", "1.0.7", "观看电视直播内容", False, "安装文件和公开分发许可尚未核验"),
-            ("nfgc-tv", "奈飞工厂TV", "9.0.1 test", "浏览和播放影视内容", False, "发布者身份和公开分发许可尚未核验"),
-        )
         options = []
         rows = []
-        for app_id, name, version, purpose, source_ready, reason in app_defs:
-            current = installed.get(app_id)
-            enabled = source_ready and current != version
-            availability = "已是最新版本" if current == version else ("可以下载" if enabled else reason)
+        for row in app_selection_rows(_load_catalog()["apps"], installed):
+            app_id, name, version, purpose = (row[key] for key in ("id", "name", "version", "purpose"))
+            availability = row["availability"]
             options.append(
                 Option(
                     app_id,
                     f"{name} {version}",
                     "DOWNLOAD-CONFIRM",
                     purpose,
-                    enabled=enabled,
-                    unavailable_reason=availability,
                 )
             )
             rows.append(
                 {
-                    "status": "completed" if current == version else ("pending" if enabled else "attention"),
+                    "status": "pending",
                     "item": name,
                     "result": availability,
                     "evidence": purpose,
@@ -445,17 +441,14 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             kind="multi_choice",
             prompt="请选择要下载的应用。",
             options=tuple(options),
-            previous_result_summary="已读取推荐应用、版本、用途和来源状态。",
-            blocker_summary="灰色或标为不可用的项目不能加入下载清单。",
-            remediation_guidance=("原生组件支持多选时直接勾选；文字模式回复示例：1、2。", "选择后会按应用名称和版本再次确认。"),
+            previous_result_summary="已列出全部应用、版本和用途；来源预审状态不会限制选择。",
+            blocker_summary="选择后确认下载；没有地址的应用由 Agent 查找，找不到时如实报告。",
+            remediation_guidance=("使用原生多选或分页添加应用。", "选择后按应用名称和版本再次确认；下载不等于安装。"),
             summary_rows=tuple(rows),
         )
     if state == "DOWNLOAD-CONFIRM":
         selected = tuple(context.get("selected_apps", ()))
-        labels = {
-            "clash-meta": "Clash Meta for Android 2.11.33",
-            "smarttube": "SmartTube 32.10 Stable",
-        }
+        labels = {app["id"]: f"{app['name']} {app.get('version', '未知版本')}" for app in _load_catalog()["apps"]}
         names = tuple(labels.get(item, str(item)) for item in selected) or ("已选择的应用",)
         return Question(
             question_id="DOWNLOAD-CONFIRM-Q1",
@@ -467,7 +460,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
                 Option("back", "返回应用列表", "APPS"),
                 _safe_exit("FINISH-SAFETY"),
             ),
-            previous_result_summary="已将编号解析为应用名称和版本。",
+            previous_result_summary="已将所选项目解析为应用名称和版本。",
             blocker_summary="下载确认不等于安装批准。",
             summary_rows=tuple(
                 {"status": "pending", "item": name, "result": "等待下载确认"}
@@ -491,10 +484,15 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
     if state == "INSTALL-PLAN":
         plan = context.get("approved_plan") or {}
         ready = plan.get("status") in {"planned", "approved"}
-        catalog_names = {
-            str(app.get("id")): f"{app.get('name')} {app.get('version')}"
-            for app in _load_catalog().get("apps", ())
-        }
+        apps = {str(app['id']): app for app in _load_catalog().get('apps', ())}
+        actual_versions = {str(item['app_id']): str(item.get('version_name') or '版本未读取') for item in context.get('verified_downloads', ())}
+        catalog_names = {app_id: f"{app['name']} {actual_versions.get(app_id, '版本未读取')}" for app_id, app in apps.items()}
+        version_rows = tuple(
+            {'status': 'attention', 'item': apps[app_id]['name'],
+             'result': f"目录参考版本 {apps[app_id]['version']}；实际下载版本 {version}。请按实际版本确认安装。"}
+            for app_id, version in actual_versions.items()
+            if app_id in apps and version != str(apps[app_id].get('expected_version_name') or apps[app_id].get('version'))
+        )
         if plan.get("action") == "install_bundle":
             plan_names = "、".join(catalog_names.get(str(item.get("app_id")), "已验证应用") for item in plan.get("installations", ()))
             plan_digest = "计划与 APK 摘要已绑定"
@@ -529,7 +527,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             ),
             previous_result_summary="已生成友好名称和不可变内部计划。",
             blocker_summary="设备、摘要、命令或风险变化会使批准失效。",
-            summary_rows=tuple(context.get("plan_rows", plan_rows)),
+            summary_rows=(*plan_rows, *version_rows),
         )
     if state == "VERIFY":
         return Question(
@@ -549,12 +547,12 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             summary_rows=tuple(context.get("evidence_rows", ({"status": "attention", "item": "现场验收", "result": "等待用户确认"},))),
         )
     if state == "DANGBEI-SOURCE":
-        error = str(context.get("source_error", "官方来源当前不可达"))
+        error = str(context.get("source_error", "尚未执行本轮下载"))
         return Question(
             question_id="DANGBEI-SOURCE-Q1",
             state_id=state,
             kind="single_choice",
-            prompt="当贝市场的官方来源当前不可用，怎么继续？",
+            prompt="当贝市场尚未下载完成，怎么继续？",
             options=(
                 Option("retry_official", "重试当贝官方来源", "DANGBEI-ACTION", "仅访问固定官网和允许域名", True),
                 Option("open_publisher", "查看当贝官方页面", "DANGBEI-PAGE-ACTION", "仅查看来源，不要求你自行寻找 APK"),
@@ -563,10 +561,9 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
             ),
             previous_result_summary="已定位当贝官网稳定版，但下载或包体验证未完成。",
             blocker_summary=error,
-            remediation_guidance=("不会改用论坛、网盘或未知 GitHub 镜像。",),
+            remediation_guidance=("无需等待来源预审；可以直接重试已有下载链接。",),
             summary_rows=(
-                {"status": "failed", "item": "当贝市场", "result": error},
-                {"status": "completed", "item": "来源保护", "result": "未使用未知镜像"},
+                {"status": "failed" if context.get("source_error") else "pending", "item": "当贝市场", "result": error},
             ),
         )
     if state == "LAUNCHER-RISK":
@@ -1397,8 +1394,8 @@ class WorkflowEngine:
                 else [plan.get("app_id")]
             )
             for app_id in filter(None, app_ids):
-                catalog_app = next((app for app in _load_catalog().get("apps", ()) if app.get("id") == app_id), {})
-                installed[app_id] = catalog_app.get("version", "已安装")
+                downloaded = next((item for item in pending.get("verified_downloads", ()) if item.get("app_id") == app_id), {})
+                installed[app_id] = downloaded.get("version_name", "已安装（版本未读取）")
             if any(app_ids):
                 self.store.update_fields(installed_apps=installed)
                 context["installed_apps"] = installed

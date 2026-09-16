@@ -2,12 +2,15 @@
 
 一个面向非技术用户的 Android TV 对话式 Skill。它用固定状态机引导用户完成只读预检查、电视确认、应用选择、APK 下载与校验、安装、桌面/壁纸设置、现场验收和 ADB 安全收尾。
 
-当前版本：`v0.3.3`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
+当前版本：`v0.3.4`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
 
 ## 这个版本解决了什么
 
 | 状态 | 能力 | 行为 |
 |---|---|---|
+| ✅ | Codex 按能力选择组件 | 实际暴露异步工具时优先使用；否则使用当前模式允许的同步工具，不再一律要求 Plan |
+| ✅ | RA 应用图标 | Skill ZIP 含图标和界面元数据，repository plugin 同时配置图标与 Logo |
+| ✅ | 完整应用选择 | 全部应用可选，不因来源未预审而隐藏或禁用；有地址就下载，缺地址由 Agent 在确认后查找 |
 | ✅ | 简短问题与外置上下文 | 先在对话中展示上一轮结果表格、阻塞点和指引；组件只保留问题与选项，不往标题堆文字 |
 | ✅ | 不允许模糊回答 | “继续”“好的”“你决定”不会推进；仍显示原问题和原选项 |
 | ✅ | 自动预检查 | 首题前执行 `adb version` 与 `adb devices -l` 等被动只读检查，不扫描局域网、不连接未知地址 |
@@ -20,16 +23,18 @@
 
 ## 安装包
 
+应用下载不需要等待项目维护者审核来源。所有应用保留在原生选择列表中；目录尚无链接不等于不可选，而是确认后由 Agent 查找。找不到链接或实际下载失败会如实显示失败并提供原生重试选项，不伪造成功。文件完整性/包名校验与安装二次确认仍保留。Emotn UI 链接来自其[官网页面](https://app.emotn.com/ui/)。
+
 验收边界：本版修复多轮强选择、原生分页、填写入口和被动发现结果回写；自动化与真实客户端 UI 验收分别记录。宿主工具未提供或重试仍失败时暂停并保留问题，不再要求用户输入编号。Skill 无法凭空生成宿主缺失的组件。详见[测试报告](docs/platform-validation.md)。
 
 | 平台 | 安装包 |
 |---|---|
-| WorkBuddy | `android-tv-apps-helper-workbuddy-v0.3.3.zip` |
-| 豆包工作 | `android-tv-apps-helper-doubao-work-v0.3.3.zip` |
-| Claude Desktop / Code | `android-tv-apps-helper-claude-v0.3.3.zip` |
-| Codex | `android-tv-apps-helper-codex-v0.3.3.zip`，或本仓库 repository plugin |
+| WorkBuddy | `android-tv-apps-helper-workbuddy-v0.3.4.zip` |
+| 豆包工作 | `android-tv-apps-helper-doubao-work-v0.3.4.zip` |
+| Claude Desktop / Code | `android-tv-apps-helper-claude-v0.3.4.zip` |
+| Codex | `android-tv-apps-helper-codex-v0.3.4.zip`，或本仓库 repository plugin |
 
-所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.3 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.3)。安装前可用：
+所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.4 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.4)。安装前可用：
 
 ```sh
 (cd 下载目录 && shasum -a 256 -c SHA256SUMS)
@@ -56,7 +61,7 @@
 请安装 Android TV Apps Helper Skill。
 
 Skill 安装包：
-https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/android-tv-apps-helper-workbuddy-v0.3.3.zip
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.4/android-tv-apps-helper-workbuddy-v0.3.4.zip
 
 安装完成后，请告诉我技能名称和版本；先不要连接或修改电视。
 ```
@@ -67,7 +72,7 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/a
 请只删除当前已安装的 Android TV Apps Helper Skill，不要删除其他 Skill。删除后告诉我结果。
 ```
 
-删除确认后，立即发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.3`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个已校验 WorkBuddy ZIP。
+删除确认后，立即发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.4`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个已校验 WorkBuddy ZIP。
 
 ### 2. 开始使用
 
@@ -83,7 +88,7 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/a
 请安装 Android TV Apps Helper Skill。
 
 Skill 安装包：
-https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/android-tv-apps-helper-doubao-work-v0.3.3.zip
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.4/android-tv-apps-helper-doubao-work-v0.3.4.zip
 
 安装完成后，请告诉我技能名称和版本；先不要连接或修改电视。
 ```
@@ -98,9 +103,28 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/a
 
 ## Codex 安装与使用
 
+### v0.3.3 安装成功却没有选项框？
+
+v0.3.3 只适配了同步 `request_user_input`。若当前模式不允许该工具，即使另有 `request_user_input_async`，旧版也会停止并建议 Plan。v0.3.4 会先检查实际可调用工具：异步优先，同步按模式限制使用；两者均不可用才保留问题并暂停。不能仅凭“Default”判断组件一定不可用。
+
+异步调用成功仅表示问题已发送，不表示用户已确认；仍须等待明确选择。每轮结果表格留在对话中，卡片只显示简短问题和选项。
+
+安装提示词：
+
+```text
+请从 GitHub 安装 Android TV Apps Helper v0.3.4 Codex Skill，并校验同一 Release 的 SHA256SUMS：
+https://github.com/SwainWong/android-tv-apps-helper/releases/download/v0.3.4/android-tv-apps-helper-codex-v0.3.4.zip
+安装后检查 agents/openai.yaml 以及 assets/ra-icon.png 均存在。
+新会话启动时检查当前可用的原生提问工具；若有 request_user_input_async 就使用它，不要直接要求切换 Plan，也不要用文字编号替代组件。
+```
+
+旧会话暂停在某题时，Agent 可在确认异步工具实际可用后运行 `resume-native <session> --question-id <当前题号> --native-tool request_user_input_async`。不要删除会话或手改 JSON 来跳过问题。
+
+RA 图标通过 Skill 的 `agents/openai.yaml` 和插件的 `composerIcon` / `logo` 配置，资源随包发布。重装后新建会话；旧会话可能缓存旧元数据。其他平台是否显示自定义图标由宿主导入器决定，不能用“文件已打包”代替“界面已显示”的验收。
+
 ### 1. 从 GitHub 获取 repository plugin
 
-可让 Codex 从 Release 的 `android-tv-apps-helper-codex-v0.3.3.zip` 安装个人 Skill；开发者也可使用完整 repository plugin：
+可让 Codex 从 Release 的 `android-tv-apps-helper-codex-v0.3.4.zip` 安装个人 Skill；开发者也可使用完整 repository plugin：
 
 ```sh
 git clone https://github.com/HXWfromDJTU/android-tv-apps-helper.git
@@ -231,10 +255,11 @@ flowchart TD
 |---|---|---|
 | Clash Meta for Android | MetaCubeX 官方 GitHub Release | ✅ 可下载并校验 |
 | SmartTube | 上游 MIT 项目，经本项目 Release 分发且固定 SHA-256 | ✅ 可下载并校验 |
-| 当贝市场 6.0.7 | 当贝发布页面指向的固定官方 CDN；不会要求普通用户自行找 APK | ⚠️ URL 已嵌入，但当前环境返回 HTTP 567，包名/版本/签名/ABI/大小/SHA-256 未完成前禁用安装 |
-| Emotn UI 与其他电视 APK | 仅在发布者身份、文件身份和公开再分发权都核验后进入项目 Release | ⚠️ 尚未满足公开分发条件，不能用未知镜像替代 |
+| 当贝市场 6.0.7 | 已记录的发布页 CDN 链接 | ✅ 可选并发起下载，不等维护者预审；HTTP 567 是历史观察，不代表每次运行都失败 |
+| Emotn UI | 已记录官网页面的 APK 链接 | ✅ 可选并发起下载；本轮未下载验证包体 |
+| 佳视通、乘风TV、魄狼TV、奈飞工厂TV | 目前目录未记录下载链接 | ✅ 可选；确认后 Agent 查找链接，实际找不到才报告失败，不隐藏 |
 
-当贝固定来源为 `https://www.dangbei.com/` 当前发布链路解析出的官方 CDN 地址。来源不可达时只提供重试官网、查看官网、暂时跳过或退出，不再让用户上传本地 APK。
+当贝使用目录内已有 CDN 地址；实际不可达时提供原生重试、返回列表或退出，不再让用户上传本地 APK。下载到用户电脑与公开镜像到本项目是两个动作；本次开放下载选择，不等于已将全部 APK 上传至 GitHub。
 
 ## 安全边界
 

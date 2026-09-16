@@ -5,25 +5,27 @@ description: Use when a user wants to connect an Android TV over ADB, install or
 
 # Android TV Apps Helper
 
-Guide one Android TV through a deterministic, reversible workflow. The harness owns questions, transitions, validation, and approvals; the model supplies verified observations.
+The harness owns questions, transitions, validation and approvals; supply verified observations.
 
 ## Start every invocation
 
 Read [references/platforms.md](references/platforms.md), [references/interaction-contract.md](references/interaction-contract.md), and [references/workflow.md](references/workflow.md). Require a local-computer context with local shell and LAN access. Cloud-only execution stops before ADB and shows one bounded switch/retry/exit question.
 
-Create a checkpoint with:
+Follow platforms.md capability detection. In Codex, prefer available `request_user_input_async` using `--native-tool request_user_input_async`. Initialize:
 
 ```sh
 python3 ../../scripts/tv-helper init-session <artifact-dir>/session.json --surface auto --host-platform <claude|codex|workbuddy|doubao-work> --execution-context local_computer
 ```
 
-Run the entry command immediately. It checks the official stable Release, honors the persistent 24-hour update snooze, and runs the limited read-only precheck. Keep the working version until its replacement identity, version, and SHA-256 pass. Precheck may locate ADB and run `adb version` and `adb devices -l`; it cannot scan or connect.
+Run entry immediately for Release checks, 24-hour update snooze and passive precheck. Validate replacement identity/version/SHA-256 before updating. Precheck locates ADB and runs `adb version` and `adb devices -l`; it cannot scan or connect.
 
 ```sh
-python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.3
+python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.4
 ```
 
 For `native_required`, display `context_markdown`, then call `tool_name` with exact `tool_input`. Keep context outside the short card. Every decision requires native choices; never ask for numbered-text answers. Record observed tool failures:
+
+For `response_delivery=async_user_message`, preserve question/presentation IDs and yield until the actual user reply. Tool acknowledgement or preselection is not an answer.
 
 ```sh
 python3 ../../scripts/tv-helper record-surface-failure <artifact-dir>/session.json --question-id <presentation.question_id> --presentation-id <presentation.presentation_id> --tool-name <presentation.tool_name> --reason <native_tool_not_exposed|native_tool_call_failed|native_tool_render_failed> --detail <observed-error>
@@ -63,7 +65,7 @@ python3 ../../scripts/tv-helper prepare-install-plan <artifact-dir>/session.json
 
 Read [references/adb-operations.md](references/adb-operations.md) before device commands and [references/apk-policy.md](references/apk-policy.md) before downloads. Use `adb -s <verified-serial>`. Downloads, installs, Home and wallpaper require separate confirmations. Never root, flash, reset, clear data, disable the factory launcher, or use unknown mirrors.
 
-Use `../../catalog/apps.json` as the application source of truth.
+Use `../../catalog/apps.json`. All apps stay selectable; source-review status never blocks downloading. For missing URLs, resolve after confirmation per apk-policy.md.
 
 Use fixed task labels and the application table. Use native multi-select or native toggle pages; confirm names and versions before downloading. Download is not install approval. Dangbei uses only publisher-linked sources.
 

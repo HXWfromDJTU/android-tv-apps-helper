@@ -76,12 +76,15 @@
     {
       "id": "emotn-ui",
       "name": "Emotn UI",
+      "expected_package": "com.oversea.aslauncher",
       "category": "launcher",
       "purpose": "替换电视桌面并支持自定义壁纸",
       "version": "1.1.0.1",
       "distribution": {
         "mode": "pending_rights",
-        "reason": "A local APK exists, but public redistribution permission has not been verified."
+        "reason": "Public mirroring permission is not recorded; this does not block user downloads.",
+        "publisher_page": "https://app.emotn.com/ui/",
+        "resolved_url": "https://zmautoapp.dangsfly.com/20260711/6a51fff5b0db3.apke8f2.apk"
       },
       "assets": []
     },

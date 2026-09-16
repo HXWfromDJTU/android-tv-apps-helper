@@ -42,8 +42,11 @@ def validate_catalog(catalog: dict[str, Any]) -> None:
         mode = distribution.get("mode")
         assets = app.get("assets", [])
         if mode in {"pending_rights", "pending_file"}:
-            if distribution.get("url") or any(asset.get("url") for asset in assets):
-                raise CatalogError(f"Pending app {app_id} cannot expose a download URL.")
+            urls = [distribution.get("url"), distribution.get("resolved_url"), *[asset.get("url") for asset in assets]]
+            if any(url and not _valid_https(url) for url in urls):
+                raise CatalogError(f"Download URLs for {app_id} must use HTTPS.")
+            if app_id == "clash-meta" and any(url and not url.startswith(CLASH_RELEASE_PREFIX) for url in urls):
+                raise CatalogError("Clash Meta must use its official GitHub Release URL.")
             continue
         if mode == "official_direct":
             publisher_page = distribution.get("publisher_page", "")
@@ -93,9 +96,11 @@ def eligible_downloads(catalog: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         app
         for app in catalog["apps"]
-        if app["distribution"]["mode"] in {"upstream_release", "project_release"}
-        or (
-            app["distribution"]["mode"] == "official_direct"
-            and app["distribution"].get("verification_status") == "verified"
-        )
+        if download_location(app)
     ]
+
+
+def download_location(app: dict[str, Any]) -> str | None:
+    assets = app.get("assets") or []
+    distribution = app.get("distribution") or {}
+    return next((asset["url"] for asset in assets if asset.get("url")), None) or distribution.get("resolved_url") or distribution.get("url")

@@ -1,20 +1,24 @@
-# APK Catalog and Distribution Policy
+# APK Selection, Download and File Validation
 
 The source of truth is `../../catalog/apps.json` relative to the plugin root.
 
 ## Distribution modes
 
 - `upstream_release`: download from the named publisher's HTTPS release URL.
-- `project_release`: download from this project's GitHub Release only when license and redistribution evidence are recorded.
-- `official_direct`: resolve only from a fixed publisher page and allowed HTTPS hosts; require verified APK identity before enabling installation. Do not mirror without redistribution permission.
-- `pending_rights`: a file may exist, but public redistribution permission is not verified. No URL is allowed.
-- `pending_file`: the expected binary is missing. No URL is allowed.
+- `project_release`: download a recorded project GitHub Release asset. Public mirroring policy is separate from user selection and download.
+- `official_direct`: download the recorded publisher-linked URL; no advance source approval is required.
+- `pending_rights`: legacy public-mirroring status only; URLs and user downloads are permitted.
+- `pending_file`: legacy missing-file status; recorded URLs may still be downloaded, otherwise locate a link after user selection.
 
-Never silently turn a pending entry into a downloadable one. Show it disabled before selection. An authorized local file is an advanced recovery path for apps the user already owns; it is not the default answer to a missing project download.
+All catalog apps must remain visible AND selectable in the native component. Never hide, group away, disable, or skip an app because source identity, license, public redistribution permission or a precomputed hash was not reviewed. Do not perform a source-review approval workflow. Existing installation is informational and does not prevent re-downloading.
+
+After named download confirmation, use each `download_expectations` URL. For `resolve_required=true`, the Agent locates a downloadable HTTPS APK for the selected app (use supplied publisher_page/search_query); this is finding an address, not approval of its source. Do not ask ordinary users to find an APK. Use at most three candidate links per app in that attempt; report actual missing-link/HTTP/network/file errors and return the native retry/back/exit question. Never invent links or treat an unavailable URL as success. Do not silently substitute another application or version.
+
+No missing catalog hash/signature or legacy pending status may block the download action. Record the actual URL, package, version, file size, SHA-256 and signing identity afterward. File validation is distinct from endorsing the publisher. Never describe a file as publisher-verified merely because it is a readable APK. Installation still needs the separate user-approved plan showing actual downloaded versions and any difference from the catalog reference; never write a reference version as the installed version.
 
 ## Dangbei Market invariant
 
-Use only the catalog's fixed publisher page, publisher-linked URL, and allowed redirect hosts. If package, version, signature, size, or SHA-256 has not been verified, keep installation disabled and offer retry official source, view official page, skip, or exit. Never ask an ordinary user to search for or provide Dangbei Market APK, and never fall back to a forum, drive link, or unknown GitHub mirror.
+当贝市场 is selectable from the ordinary app list and uses its recorded download URL without waiting for maintainer review. Record the downloaded file's identity, compare expected package when known, and report real network errors. The dedicated official-source retry also accepts a newly downloaded file without a pre-reviewed hash. Do not ask the user to supply the APK.
 
 ## Clash Meta invariant
 
@@ -37,7 +41,7 @@ Before planning an install:
 5. Compare with the locked TV's SDK, ABI, free storage, and installed version/signature.
 6. Create an immutable plan ID from target serial, file digest, and action.
 
-For `official_direct`, also verify the final redirect host, expected package, versionName/versionCode, and signing-certificate SHA-256. A publisher page change does not automatically authorize a new APK.
+Record signing-certificate SHA-256 for the obtained APK; compare known expected values, but absence of an earlier recorded signature/hash is not a source-review gate. Do not claim trust or malware safety from these measurements.
 
 Recompute the digest immediately before execution. A changed file, serial, command, or risk invalidates approval.
 
@@ -51,4 +55,4 @@ A project-hosted APK needs all of:
 - a notice linking the exact upstream source/release;
 - a GitHub Release asset URL under this project.
 
-Store APK binaries in GitHub Releases, not Git history. Keep proprietary, unclear, or missing apps visible in the catalog with their blocking reason.
+Store APK binaries in GitHub Releases, not Git history. Keep missing or unreviewed apps visible and selectable; missing public-mirroring permission does not block downloading from a recorded upstream/source URL.

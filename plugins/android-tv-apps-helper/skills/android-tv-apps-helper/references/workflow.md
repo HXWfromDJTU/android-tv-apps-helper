@@ -40,15 +40,15 @@ Selecting a task performs no mutation.
 
 ## Application selection and approvals
 
-`APPS-Q1` shows index, name, purpose, version, installed state, and availability. Unavailable entries remain explained in the table but are not selectable. Use native multi-select when it fits; otherwise use native add/remove pages then “完成选择”. Never request numbered chat answers.
+`APPS-Q1` shows every catalog app as a selectable native option, including missing links and unreviewed sources. Show name, purpose, version, installed state and URL availability; never disable based on source review. Use native multi-select when it fits; otherwise use native add/remove pages then “完成选择”. Never request numbered chat answers.
 
 After valid selection, `DOWNLOAD-CONFIRM-Q1` repeats every selected name and version. Confirming it permits only source resolution, download, and file validation. The subsequent immutable install plan binds friendly plan name, hidden internal plan ID, target serial, APK SHA-256, command, impact, risk, and recovery. Installation requires another exact approval.
 
-当贝市场 uses `official_direct`. If its fixed official page/CDN is unavailable or the identity is unverified, `DANGBEI-SOURCE-Q1` offers only retry official source, view official page, skip, or safe exit. Ordinary users are never asked to find or upload its APK.
+当贝市场 uses its recorded `official_direct` URL without a pre-review requirement. Real HTTP/file failures are reported with native retry/back/exit choices. Missing URLs for other selected apps are located by the Agent after download confirmation. Ordinary users are never asked to find or upload APKs.
 
 ## Default launcher and wallpaper
 
-Emotn UI must already be installed or come from an authorized verified file. If unavailable, show that in the application table before selection.
+Emotn UI is selectable for download from its recorded URL; downloaded file validation and install approval follow the same workflow as other apps. Default-desktop operations still require a verified installed/running Emotn UI.
 
 Home-key routing and wallpaper replacement are separate actions and separate compatibility rows. Before either approval, show the verified manufacturer/model/system/build and classify each action as verified, high risk, or unknown. Never confuse HarmonyOS with HyperOS and never invent a probability for an unknown device.
 

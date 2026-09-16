@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, Iterable
 from urllib.parse import urljoin, urlparse
+from .catalog import download_location
 
 
 class DownloadError(ValueError):
@@ -44,15 +45,7 @@ def validate_download_identity(
 
 
 def _downloadable(app: dict[str, Any]) -> bool:
-    distribution = app.get("distribution", {})
-    mode = distribution.get("mode")
-    if mode in {"upstream_release", "project_release"}:
-        return bool(app.get("assets"))
-    return (
-        mode == "official_direct"
-        and distribution.get("verification_status") == "verified"
-        and bool(app.get("assets"))
-    )
+    return bool(download_location(app))
 
 
 def app_selection_rows(
@@ -62,16 +55,13 @@ def app_selection_rows(
     for index, app in enumerate(apps, 1):
         installed_version = installed.get(str(app["id"]))
         current = installed_version == app.get("version")
-        enabled = _downloadable(app) and not current
-        distribution = app.get("distribution", {})
+        enabled = True
         if current:
-            availability = "已是最新版本"
-        elif enabled:
+            availability = "已安装此版本；仍可选择重新下载"
+        elif _downloadable(app):
             availability = "可以下载"
-        elif distribution.get("mode") == "official_direct":
-            availability = "官方来源待项目维护者完成包体验证"
         else:
-            availability = str(distribution.get("reason", "当前不可下载"))
+            availability = "可选择；确认后由 Agent 查找下载地址"
         rows.append(
             {
                 "index": index,

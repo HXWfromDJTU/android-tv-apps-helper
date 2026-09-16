@@ -96,6 +96,14 @@ NATIVE_CAPABILITIES_BY_PLATFORM = {
     "codex": {"max_options": 3, "multi_choice": False},
 }
 
+
+def resolve_native_tool(platform: str, requested: str | None = None) -> str:
+    default = NATIVE_TOOL_BY_PLATFORM[platform]
+    allowed = {default, "request_user_input_async"} if platform == "codex" else {default}
+    if requested is not None and requested not in allowed:
+        raise ValueError(f"Unsupported native tool for {platform}: {requested}")
+    return requested or default
+
 FALLBACK_LABELS = {
     "native_tool_not_exposed": "当前执行模式没有向 Skill 提供原生选择组件",
     "native_tool_call_failed": "原生选择组件调用失败",
@@ -270,6 +278,7 @@ def _presentation_id(question: Any, platform: str, tool_name: str, tool_input: d
 def build_host_presentation(question: Any, session: dict[str, Any]) -> dict[str, Any]:
     """All decisions require a native control; missing controls pause, never downgrade."""
     platform = str(session.get("host_platform", "codex"))
+    tool_name = resolve_native_tool(platform, session.get("native_tool"))
     capabilities = session.get("interaction_capabilities") or {}
     ui = session.get("interaction_ui") or {}
     context = render_context_markdown(question)
@@ -311,12 +320,20 @@ def build_host_presentation(question: Any, session: dict[str, Any]) -> dict[str,
     if free_input:
         context += f"\n已选择填写信息：请使用组件末尾的补充输入框，格式为 {question.input_prefix}…；也可选择返回或退出。\n"
     tool_question = {"question": prompt, "header": _friendly_header(question), "options": options}
-    if platform == "codex":
+    if tool_name == "request_user_input_async":
+        tool_question = {"title": prompt, "options": [option["label"] for option in options]}
+        # Async has no per-option description field. Keep consequences visible
+        # beside the short card instead of dropping them or lengthening its title.
+        context += "\n| 选项说明 | 内容 |\n| --- | --- |\n"
+        for option in options:
+            label = option["label"].replace("|", "\\|").replace("\n", " ")
+            description = option["description"].replace("|", "\\|").replace("\n", " ")
+            context += f"| {label} | {description} |\n"
+    elif platform == "codex":
         tool_question["id"] = re.sub(r"[^a-z0-9]+", "_", question.question_id.lower()).strip("_")
     else:
         tool_question["multiSelect"] = multi
     tool_input = {"questions": [tool_question]}
-    tool_name = NATIVE_TOOL_BY_PLATFORM[platform]
     instance = str(session.get("question_instance_id", "preview")) + json.dumps(
         [ui, capabilities.get("failure_count", 0)], sort_keys=True, ensure_ascii=False
     )
@@ -327,4 +344,5 @@ def build_host_presentation(question: Any, session: dict[str, Any]) -> dict[str,
         "context_markdown": context, "rendered": None, "page_count": pages,
         "accepts_free_input": free_input, "native_multi": multi,
         "supplemental_input": "host_native_other",
+        "response_delivery": "async_user_message" if tool_name == "request_user_input_async" else "tool_result",
     }

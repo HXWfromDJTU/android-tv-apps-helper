@@ -160,13 +160,12 @@ def validate_action_evidence(
         _require(evidence, ("source_url", "path"), "当贝来源")
         expected_app = pending.get("dangbei_expectation") or {}
         distribution = expected_app.get("distribution") or {}
-        if distribution.get("verification_status") != "verified" or len(expected_app.get("assets", ())) != 1:
-            raise ValueError("当贝目录尚无完整、已核验的固定包体身份，不能标记下载完成。")
-        expected = expected_app["assets"][0]
-        if evidence["source_url"] != expected.get("url") or identity.get("package") != distribution.get("expected_package"):
+        expected = next(iter(expected_app.get("assets", ())), {})
+        expected_url = expected.get("url") or distribution.get("resolved_url")
+        if evidence["source_url"] != expected_url or identity.get("package") != distribution.get("expected_package"):
             raise ValueError("当贝来源或包名与固定官方目录不一致。")
         for field in ("size", "sha256", "signing_sha256", "version_name", "version_code", "min_sdk", "abi"):
-            if identity.get(field) != expected.get(field):
+            if expected.get(field) not in (None, "") and identity.get(field) != expected.get(field):
                 raise ValueError(f"当贝 {field} 与已核验目录不一致。")
     elif action_id == "DANGBEI-PAGE-ACTION":
         _require(evidence, ("publisher_url",), "当贝官网页面")
@@ -186,6 +185,10 @@ def validate_action_evidence(
             _sha(item["signing_sha256"], "下载签名摘要")
             if item["exit_code"] != 0:
                 raise ValueError("下载文件校验退出码不是成功。")
+            if urlparse(str(item["url"])).scheme != "https" or not urlparse(str(item["url"])).hostname:
+                raise ValueError("下载文件必须记录实际 HTTPS 地址。")
+            if not isinstance(item["size"], int) or item["size"] <= 0:
+                raise ValueError("下载文件大小必须为正整数。")
         if set(pending.get("selected_apps", ())) != {str(item["app_id"]) for item in files}:
             raise ValueError("下载文件清单与用户确认的应用清单不一致。")
         expected_by_id = {item["app_id"]: item for item in pending.get("download_expectations", ())}

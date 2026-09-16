@@ -232,7 +232,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual((code, error), (0, ""))
         self.assertEqual(
             [item["id"] for item in json.loads(output)],
-            ["clash-meta", "smarttube"],
+            ["clash-meta", "smarttube", "dangbei-market", "emotn-ui"],
         )
 
     def test_install_plan_requires_explicit_approval_before_install(self):

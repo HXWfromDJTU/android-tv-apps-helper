@@ -39,6 +39,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     init.add_argument("--skill-root")
     init.add_argument("--python-command", default="python3")
+    init.add_argument("--native-tool", choices=("request_user_input", "request_user_input_async", "AskUserQuestion"))
 
     show = subcommands.add_parser("show-session")
     show.add_argument("session", type=Path)
@@ -80,6 +81,7 @@ def _parser() -> argparse.ArgumentParser:
     resume = subcommands.add_parser("resume-native")
     resume.add_argument("session", type=Path)
     resume.add_argument("--question-id", required=True)
+    resume.add_argument("--native-tool", choices=("request_user_input", "request_user_input_async", "AskUserQuestion"))
 
     discover = subcommands.add_parser("workflow-discover")
     discover.add_argument("session", type=Path)
@@ -195,6 +197,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 execution_context=args.execution_context,
                 skill_root=args.skill_root,
                 python_command=args.python_command,
+                native_tool=args.native_tool,
             )
             _print_session(store)
         elif args.command == "show-session":
@@ -275,7 +278,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             )
         elif args.command == "resume-native":
             store = SessionStore(args.session)
-            store.resume_native(args.question_id)
+            store.resume_native(args.question_id, native_tool=args.native_tool)
             _print_json(_interactive_payload(store, Question.from_dict(store.read()["pending_question"])))
         elif args.command in {"workflow-answer", "workflow-native-answer"}:
             store = SessionStore(args.session)
