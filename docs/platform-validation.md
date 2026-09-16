@@ -18,9 +18,9 @@ Public evidence below redacts local account names, IP addresses, SSIDs, serials,
 
 | Platform | Artifact | Removal | Installation | Explicit invocation | Precheck + invalid-answer lock | Safe exit | Deeper flow / physical TV |
 |---|---|---|---|---|---|---|---|
-| Codex | ✅ | ⏭️ No previous Codex copy existed | ✅ RC4 ZIP installed to the personal Skill directory | ✅ Fresh Codex CLI 0.154.0 resolved v0.3.0 | ✅ Table-first `PRECHECK-WIFI-Q1`; `继续` rejected with attempts = 1; same options retained | ✅ Live Codex submitted `0`; final report recorded no TV operation | ⏭️ App selection, Home, wallpaper, ADB shutdown and physical TV not run |
-| WorkBuddy 中国大陆版 | ✅ | ✅ Existing target moved recoverably to Trash | ⚠️ RC4 GitHub conversation install hit 502 and the WorkBuddy command path was stopped; exact ZIP installed through a hash-verified local filesystem fallback | ✅ New WorkBuddy task invoked the installed Skill | ✅ Native required card contained progress, blocker, guide, and four non-duplicated choices; `continue` rejected and the same card returned | ⚠️ Live native card displayed it as row 4, but submitted stable `safe_exit` successfully | ⏭️ App selection, Home, wallpaper, ADB shutdown and physical TV not run |
-| 豆包工作 | ✅ | ✅ Previous Skill deleted in the client | ✅ RC4 ZIP uploaded; security detection completed; Skill visible | ✅ New 本地电脑 task invoked the installed Skill | ✅ Table-first `PRECHECK-WIFI-Q1`; `继续` rejected by the harness and the same four choices returned | ✅ Live text fallback submitted `0`; final report says no connection, scan, mutation, or tool download | ⏭️ App selection, Home, wallpaper, ADB shutdown and physical TV not run |
+| Codex | ✅ | ✅ Previous RC4 copy moved recoverably to Trash before the stable package was installed | ✅ Stable v0.3.0 Codex ZIP installed to the personal Skill directory and entrypoint checked | ✅ Fresh Codex CLI 0.154.0 resolved v0.3.0 during RC4 live acceptance | ✅ RC4 live acceptance plus stable-package automated checks: table-first `PRECHECK-WIFI-Q1`; `继续` rejected with attempts = 1; same options retained | ✅ RC4 live Codex submitted `0`; final report recorded no TV operation | ⏭️ Stable-package GUI dialogue, app selection, Home, wallpaper, ADB shutdown and physical TV not run |
+| WorkBuddy 中国大陆版 | ✅ | ✅ Previous RC4 target moved recoverably to Trash before stable installation | ✅ Stable v0.3.0 WorkBuddy ZIP installed through a hash-verified local filesystem fallback and entrypoint checked | ✅ New WorkBuddy task invoked the installed RC4 Skill | ✅ RC4 live acceptance: native required card contained progress, blocker, guide, and four non-duplicated choices; `continue` rejected and the same card returned | ⚠️ RC4 live native card displayed safe exit as row 4, but submitted stable `safe_exit` successfully | ⏭️ Stable-package dialogue, app selection, Home, wallpaper, ADB shutdown and physical TV not run |
+| 豆包工作 | ✅ | ✅ Previous Skill deleted for RC4; stable v0.3.0 then replaced the same Skill in the client | ✅ Stable v0.3.0 ZIP uploaded; replacement confirmed; security detection completed; Skill visible and enabled | ✅ New 本地电脑 task invoked the stable installed Skill | ✅ Stable live acceptance: table-first `PRECHECK-WIFI-Q1`; `继续` rejected with a ❌ row and the same four choices returned | ✅ Stable live native card submitted `安全退出`; final report says no connection, scan, mutation, or tool download | ⏭️ App selection, Home, wallpaper, ADB shutdown and physical TV not run |
 | Claude Desktop / Code | ✅ automated package checks | ⏭️ Deferred by user request | ⏭️ Not run | ⏭️ Not run | ⏭️ Not run | ⏭️ Not run | ⏭️ Not run |
 
 ## Candidate artifacts used for live validation
@@ -35,6 +35,22 @@ The final candidate was GitHub prerelease `v0.3.0-rc.4`. Its locally verified SH
 | `android-tv-apps-helper-codex-v0.3.0.zip` | `808ad3f198adde1f95c207cf214a17589099d043f9cbe7bf138f279eceb08d0a` |
 
 Final `v0.3.0` artifacts are rebuilt from merged `main`; their release hashes may therefore differ and are published in `SHA256SUMS`.
+
+## Stable v0.3.0 post-release installation
+
+The public stable release is [`v0.3.0`](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.0), built from commit `f5c750cdcd666cbab6f6e280881013c1ca7d0a91`. The release is public, non-draft, and non-prerelease. Its published package hashes are:
+
+| Artifact | SHA-256 |
+|---|---|
+| `android-tv-apps-helper-workbuddy-v0.3.0.zip` | `a7476106f6e5ec8124943d361830708d67b5adb58b043648e63e2cacfc56a4ee` |
+| `android-tv-apps-helper-doubao-work-v0.3.0.zip` | `d7fb72d335df24cab47795e1a0ae7ba5500de6b2cb55043dbfd451ba12887917` |
+| `android-tv-apps-helper-claude-v0.3.0.zip` | `fde0cbb55301833900caeb2e87bd7c92f74e194c6722883453e835771a6bd56f` |
+| `android-tv-apps-helper-codex-v0.3.0.zip` | `97758971a02c9d7201ba9085447d51d5bc3ae5fcd36d636bff26cb07d8306476` |
+
+- Codex and WorkBuddy received the exact stable packages after SHA-256 verification. Their previous RC4 directories were moved to Trash with timestamped names, and the packaged `tv-helper --help` entrypoints passed. Their shared core workflow hash is `4eeb79af16b51373b6aaa99956e5bc7a5f5f55c59a811b776eb3d4b5ff2b239c`.
+- 豆包工作 received the exact stable Doubao package through `上传技能`. The client displayed the irreversible same-name replacement confirmation, the user confirmed it, and the client then displayed `安全检测已完成`; the Skill remained visible and enabled.
+- A new stable-package 豆包工作 local-computer task invoked the installed Skill. It ran `workflow-entry` with `doubao-work / local_computer / structured_form`, displayed the status table and one self-contained `PRECHECK-WIFI-Q1`, rejected `继续` with a ❌ row while preserving the question, and accepted the native `安全退出` option. Its final report recorded no TV operation, no active scan or connection, and no ADB, Platform-Tools, or APK download/install.
+- Stable-package Codex and WorkBuddy replacement/entrypoint checks are current; their live dialogue evidence remains the RC4 acceptance described below. The fixes added after RC4—session-start launcher restore binding, exact prechecked ADB path binding, and non-duplicated finish choices—are covered by the final automated suite rather than a physical-TV run.
 
 ## WorkBuddy live evidence
 
