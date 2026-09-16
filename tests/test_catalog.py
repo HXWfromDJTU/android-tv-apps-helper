@@ -13,7 +13,7 @@ from tv_helper.catalog import CatalogError, eligible_downloads, load_catalog, va
 
 
 class CatalogTests(unittest.TestCase):
-    def test_official_direct_requires_publisher_source_and_allowlist(self):
+    def test_official_direct_does_not_require_source_allowlist_approval(self):
         catalog = {
             "schema_version": 1,
             "apps": [
@@ -34,8 +34,7 @@ class CatalogTests(unittest.TestCase):
         }
         validate_catalog(catalog)
         catalog["apps"][0]["distribution"]["allowed_hosts"] = ["www.dangbei.com"]
-        with self.assertRaises(CatalogError):
-            validate_catalog(catalog)
+        validate_catalog(catalog)
     def setUp(self):
         self.catalog_path = PLUGIN / "catalog" / "apps.json"
 
@@ -55,19 +54,20 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "official"):
             validate_catalog(catalog)
 
-    def test_project_hosted_asset_requires_permission_and_sha256(self):
+    def test_project_download_does_not_require_mirroring_review_or_prior_hash(self):
         catalog = load_catalog(self.catalog_path)
         smarttube = next(app for app in catalog["apps"] if app["id"] == "smarttube")
         broken = copy.deepcopy(catalog)
         target = next(app for app in broken["apps"] if app["id"] == "smarttube")
         target["distribution"].pop("redistribution_evidence")
-        with self.assertRaisesRegex(CatalogError, "redistribution"):
-            validate_catalog(broken)
+        validate_catalog(broken)
 
         target = copy.deepcopy(smarttube)
         target["assets"][0]["sha256"] = ""
         broken = {"schema_version": 1, "apps": [target]}
-        with self.assertRaisesRegex(CatalogError, "sha256"):
+        validate_catalog(broken)
+        target['assets'][0]['sha256'] = 'not-a-hash'
+        with self.assertRaisesRegex(CatalogError, 'sha256'):
             validate_catalog(broken)
 
     def test_eligible_downloads_include_unreviewed_entries_with_urls(self):

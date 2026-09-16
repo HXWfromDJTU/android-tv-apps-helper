@@ -41,52 +41,23 @@ def validate_catalog(catalog: dict[str, Any]) -> None:
         distribution = app.get("distribution", {})
         mode = distribution.get("mode")
         assets = app.get("assets", [])
-        if mode in {"pending_rights", "pending_file"}:
-            urls = [distribution.get("url"), distribution.get("resolved_url"), *[asset.get("url") for asset in assets]]
-            if any(url and not _valid_https(url) for url in urls):
-                raise CatalogError(f"Download URLs for {app_id} must use HTTPS.")
-            if app_id == "clash-meta" and any(url and not url.startswith(CLASH_RELEASE_PREFIX) for url in urls):
-                raise CatalogError("Clash Meta must use its official GitHub Release URL.")
-            continue
-        if mode == "official_direct":
-            publisher_page = distribution.get("publisher_page", "")
-            resolved_url = distribution.get("resolved_url", "")
-            allowed_hosts = distribution.get("allowed_hosts", [])
-            if not _valid_https(publisher_page) or not _valid_https(resolved_url):
-                raise CatalogError(f"Official source for {app_id} must use HTTPS URLs.")
-            if not isinstance(allowed_hosts, list) or not allowed_hosts:
-                raise CatalogError(f"Official source for {app_id} needs allowed_hosts.")
-            for url in (publisher_page, resolved_url):
-                if urlparse(url).hostname not in allowed_hosts:
-                    raise CatalogError(f"Official URL host for {app_id} is not allowlisted.")
-            verification = distribution.get("verification_status")
-            if verification not in {"pending_file_identity", "verified"}:
-                raise CatalogError(f"Official source for {app_id} has invalid verification status.")
-            if verification == "pending_file_identity":
-                if assets:
-                    raise CatalogError(f"Unverified official app {app_id} cannot expose install assets.")
-                continue
-        elif mode not in {"upstream_release", "project_release"}:
+        if mode not in {"pending_rights", "pending_file", "official_direct", "upstream_release", "project_release"}:
             raise CatalogError(f"Unsupported distribution mode for {app_id}: {mode}")
-        if not assets:
-            raise CatalogError(f"Downloadable app {app_id} must provide assets.")
-        if mode == "project_release":
-            evidence = distribution.get("redistribution_evidence")
-            if not evidence or not distribution.get("license"):
-                raise CatalogError(f"Project-hosted app {app_id} needs redistribution evidence and license.")
+        # Review/redistribution fields describe metadata, not download permission.
+        urls = [distribution.get("url"), distribution.get("resolved_url"), *[asset.get("url") for asset in assets]]
+        if any(url and not _valid_https(url) for url in urls):
+            raise CatalogError(f"Download URLs for {app_id} must use HTTPS.")
+        if app_id == "clash-meta" and any(url and not url.startswith(CLASH_RELEASE_PREFIX) for url in urls):
+            raise CatalogError("Clash Meta must use its official GitHub Release URL.")
         for asset in assets:
             url = asset.get("url", "")
             digest = asset.get("sha256", "")
             if not _valid_https(url):
                 raise CatalogError(f"Asset URL for {app_id} must be HTTPS.")
-            if not SHA256.fullmatch(digest):
+            if digest and not SHA256.fullmatch(digest):
                 raise CatalogError(f"Asset sha256 for {app_id} must contain 64 lowercase hex characters.")
-            if not isinstance(asset.get("size"), int) or asset["size"] <= 0:
+            if asset.get("size") is not None and (not isinstance(asset["size"], int) or asset["size"] <= 0):
                 raise CatalogError(f"Asset size for {app_id} must be positive.")
-            if mode == "project_release" and not url.startswith(PROJECT_RELEASE_PREFIX):
-                raise CatalogError(f"Project-hosted asset for {app_id} must use this project's GitHub Releases.")
-            if mode == "official_direct" and urlparse(url).hostname not in distribution["allowed_hosts"]:
-                raise CatalogError(f"Official asset host for {app_id} is not allowlisted.")
             if app_id == "clash-meta" and not url.startswith(CLASH_RELEASE_PREFIX):
                 raise CatalogError("Clash Meta must use its official GitHub Release URL.")
 
