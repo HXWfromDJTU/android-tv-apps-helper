@@ -1,82 +1,36 @@
-# Platform Validation — v0.3.1
+# v0.3.2 展示精简验证报告
 
-Date: 2026-09-16 (Asia/Shanghai). Public evidence omits account names, LAN addresses, TV serials and private local paths.
+日期：2026-09-16。范围：仅回退长问题标题的展示，不回滚原生组件调用或安全状态机。
 
-## Release verdict and boundaries
+## 复现与修复
 
-The native-choice fix is implemented and automated regression checks pass. WorkBuddy and Doubao rendered real native controls in the initial v0.3.1 candidate. Subsequent review added question-instance binding, platform schema limits, recommendation labels, context tables and removed tool allowlists. **Final WorkBuddy/Doubao GUI revalidation could not complete because Computer Use returned `Sky Computer Use native pipe startup failed` on two consecutive app connections. Initial-candidate GUI results are not final-package UI acceptance.**
-
-| Platform | Final package installation | Final harness entrypoint | Live dialogue evidence | Final GUI status |
-|---|---|---|---|---|
-| Codex | Exact release ZIP installed in personal Skill directory; former copy moved to Trash | `tv-helper --help` passed | Codex CLI 0.154.0 invokes installed Skill; complete four-option question uses explicit schema-limit fallback | CLI validation; desktop GUI not claimed |
-| WorkBuddy China 5.5.6 | Exact release ZIP installed in personal Skill directory; former copy moved to Trash | `tv-helper --help` passed | Initial candidate: real `AskUserQuestion` group and clicked safe exit | Final GUI blocked by Computer Use service failure |
-| Doubao Work | Exact release ZIP placed in previously observed local user-Skill directory; former copy moved to Trash | `tv-helper --help` passed | Initial candidate: UI upload/replacement, security check, native radio group and safe exit | Final GUI and cloud-copy refresh not verified; local install does not prove uploaded Skill state |
-| Claude Desktop / Code | ZIP build and shared-core checks only | Automated extracted-package checks | Not run by user decision | Not run |
-
-No physical television was connected or modified. APK installation, Home, wallpaper, audiovisual/remote acceptance and ADB shutdown on hardware were not re-executed.
-
-## Final artifacts
-
-These exact ZIPs, not earlier candidates, are the release assets. Every ZIP contains 30 files, no APK, and identical shared harness/catalog/references. All four `SHA256SUMS` entries passed. All 30 installed files on each of Codex, WorkBuddy and Doubao were compared byte-for-byte against their final ZIP and matched.
-
-| Platform | SHA-256 |
-|---|---|
-| WorkBuddy | `dcab3b58858104d7ca27bce51dadbdb06e226115bc97e685a50bca7f227228d8` |
-| Doubao Work | `843043e850bd48a0298599086d7d33753f61ef863c8c6106d450c73c72c1a028` |
-| Claude | `87fdf0a9b3f328a2644079fc2849db22afedd9d0931aeeb711d46b717b85d317` |
-| Codex | `6b39c09441c9982c03c0659b95738da48005ba9a1b5fcd9995150806a3e96fc8` |
-
-## Initial-candidate live reproduction
-
-### WorkBuddy
-
-1. Installed candidate after moving previous target recoverably to Trash; verified entrypoint.
-2. Started a fresh task requesting only automatic passive read-only precheck, with no dependency download, scan, connection or TV mutation.
-3. The Agent loaded the Skill, ran `workflow-entry --installed-version 0.3.1`, received `native_required`, and called `AskUserQuestion`.
-4. Observed a real clickable group with four choices: install/specify ADB, same Wi-Fi, Wi-Fi not confirmed, safe exit. Its prompt included progress, actual results, missing-ADB blocker and official setup guidance.
-5. Clicked safe exit. The Agent mapped its label to `safe_exit`, submitted `PRECHECK-WIFI-Q1`, reached `END-NO-ADB`, and generated a final report. No TV action ran.
-6. This preceded final context-table and permission changes; it proves candidate native interaction, not final-package table-first UI.
-
-Initial ZIP SHA-256: `27dc7618470ca1d1cbb6249b97778ce9b58c96265cbdf3227a52c331b4e6d95d`.
-
-### Doubao Work
-
-1. Uploaded candidate through installed Skills, replaced same-name entry, waited for security detection, refreshed, and observed enabled Skill.
-2. Started a new **local-computer** task. The Agent loaded references, initialized the harness and ran passive precheck.
-3. Observed a result table followed by a real native radio group. The card repeated progress, blocker, official Platform-Tools guidance and all four choices.
-4. Accessibility radio-node clicks initially did not submit; clicking the visible option text succeeded. A coordinate attempt returned `noWindowsAvailable`; reconnecting restored control.
-5. The Agent submitted `workflow-answer ... --question-id PRECHECK-WIFI-Q1 --value safe_exit`, generated `final-report.md`, and displayed a no-TV-operation result table.
-6. Final package later replaced the observed local directory because Computer Use became unavailable. Final-package upload/security detection/new-task rendering remains unverified.
-
-Initial ZIP SHA-256: `7a7cec139389fc6539a97e608f2970924b05396507eed1cf65bce6b76da58fad`.
-
-### Codex
-
-1. Ran official Codex CLI 0.154.0 in an isolated temporary workspace/npm cache; global CLI and npm ownership were unchanged.
-2. Initial candidate started with `--surface auto`; noninteractive host did not expose `request_user_input`. Agent recorded `native_tool_not_exposed`, retained the question and showed the reason in its table.
-3. After fixing Codex's 2–3-option limit, a subsequent run produced `question_not_native_compatible` for complete four-choice `PRECHECK-WIFI-Q1`, without sending invalid tool parameters or dropping safe exit.
-4. Workspace sandbox blocked GitHub update lookup; the result showed an update warning. No dependency download, scan, connection or mutation occurred. Execution stopped awaiting an answer.
-5. Pre-existing icon-path and unrelated MCP startup warnings were separate from Skill behavior. An early npm cache-permission failure was resolved with an isolated cache before Skill execution.
-6. Repeated the precheck with the exact final Codex ZIP installed: CLI exited 0, displayed the result table and unchanged complete four-option question, including `question_not_native_compatible` and the update-network warning. It stopped without answering or touching a TV.
-
-## Review and automated regression
-
-Two independent user-view reviewers found and rechecked these fixes:
-
-| Finding | Resolution | Evidence |
+| 状态 | 项目 | 结果 |
 |---|---|---|
-| Codex sent four options to a three-option tool | Platform-specific limits and complete per-question fallback | Native schema tests |
-| Old failure callback could affect a new question | UUID per question instance; presentation digest binds instance/content/host/tool/payload | Cross-question and same-ID replay rejection |
-| Temporary rendering error disabled later native questions | Current-question fallback only; accepted answer clears active failure and preserves audit context | Same-ID reentry test |
-| Native choice omitted recommendation and separate table | Label/value aliases and `context_markdown`; context remains inside card | Rendering/mapping tests |
-| All package tests used default Codex host | Extract each ZIP and initialize actual platform | Package tests |
-| Tool allowlist might exclude Shell or native input | Omit `allowed-tools`; inherit host availability and permissions without extra Shell preapproval | Package frontmatter checks |
+| ✅ | 基线 | v0.3.1 的 116 项测试通过 |
+| ✅ | 复现 | 新增长上下文场景在四个平台均失败：组件 question 字段被拼入结果、阻塞和长指引 |
+| ✅ | 修复 | component_prompt 只返回原问题；context_markdown 保留全部上下文，Skill 和四平台适配器要求先显示该表格再调用原生工具 |
+| ✅ | 风险信息 | 型号、壁纸几天后被重置的提示和失败风险移到可见对话上下文，没有删除 |
+| ✅ | 保留规则 | 问题锁定、原生优先、选项映射、失败降级和下载/安装批准边界不变 |
 
-`116/116` automated tests passed on final source. Skill/plugin validation, compilation, JSON parsing and `git diff --check` passed. State checks prove rejection of stale callbacks; an Agent-supplied error string cannot independently prove a host rendered a card. Actual UI evidence is separated above. Both reviewers accepted the final code fixes. A further WorkBuddy connection retry before publication returned the same Computer Use startup failure.
+验证结果：117 项测试全部通过；Skill/plugin 校验、Python 编译、JSON 解析、`git diff --check`、四平台 ZIP 构建及 SHA-256 校验均通过。
 
-## Known limitations
+实现环境：分支 `feature/compact-question-20260916115808`，worktree `.worktrees/compact-question-20260916115808`，基线 main / `a8235cc`；无 cherry-pick，无服务端口（Python CLI 项目）。本轮 E2E 为打包后 CLI 入口检查，非客户端 GUI 验收。
 
-- Codex four-choice questions, menus beyond host option limits, disabled-option lists, short-text and unsupported multi-select use complete text fallback. Pagination was not added. Next compatible question still prefers native input.
-- Tool availability depends on host mode. A Skill cannot enable missing components with markup.
-- Final WorkBuddy/Doubao GUI acceptance must be rerun after Computer Use recovers. This is not a claim of final three-platform GUI acceptance.
-- Historical evidence remains in [v0.3.0 report](platform-validation-v0.3.0.md).
+## 本版验收边界
+
+| 平台 | 自动化范围 | 客户端真实 UI |
+|---|---|---|
+| Codex | 简短 question、独立上下文、选项限制和包入口 | 本版未重跑，等待用户验证 |
+| WorkBuddy | 简短 question、独立上下文、原生工具参数和包入口 | 本版未重跑，等待用户验证 |
+| 豆包工作 | 简短 question、独立上下文、原生工具参数和包入口 | 本版未重跑，等待用户验证 |
+| Claude | 同一核心与平台包检查 | 按用户决定暂不实测 |
+
+本轮没有连接或修改电视，没有替换用户客户端中已安装的 Skill。安装 v0.3.2 后应新建会话以避免旧上下文继续要求长标题。历史 UI 证据不算本版验收，见 [v0.3.1 报告](platform-validation-v0.3.1.md)。
+
+## 用户验证步骤
+
+1. 从 v0.3.2 Release 安装对应平台 ZIP，确认版本并新建对话。
+2. 启动 Skill，观察先出现带 ✅／❌／⚠️ 的结果表格，以及阻塞和操作指引。
+3. 检查原生组件只显示简短问题和选项，不重复塞入检查结果或长说明。
+4. 未明确回答时应停留原问题；选择安全退出应停止流程，不修改电视。
+5. 若题型/选项数超过宿主能力，仍允许有原因提示的完整文字降级，不据此声称原生 UI 通过。

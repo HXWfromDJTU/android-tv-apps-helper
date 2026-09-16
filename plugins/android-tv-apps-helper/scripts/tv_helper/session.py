@@ -62,7 +62,7 @@ class SessionStore:
                 "candidate_ip": None,
                 "approved_plan": None,
                 "history": [],
-                "workflow_revision": "v0.3.1",
+                "workflow_revision": "v0.3.2",
                 "session_sequence": 0,
                 "interaction_capabilities": {
                     "native_status": "pending" if resolved_surface == "structured_form" else "unavailable",
@@ -118,7 +118,7 @@ class SessionStore:
         migrated = dict(data)
         migrated["schema_version"] = 3
         defaults = {
-            "workflow_revision": "v0.3.1",
+            "workflow_revision": "v0.3.2",
             "session_sequence": 0,
             "interaction_capabilities": {},
             "update_check": {},
@@ -148,7 +148,7 @@ class SessionStore:
             migrated["approved_plan"] = {
                 **migrated["approved_plan"],
                 "requires_revalidation": True,
-                "revalidation_reason": "Session migrated to workflow revision v0.3.1.",
+                "revalidation_reason": "Session migrated to workflow revision v0.3.2.",
             }
         return migrated
 

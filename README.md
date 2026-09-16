@@ -2,13 +2,13 @@
 
 一个面向非技术用户的 Android TV 对话式 Skill。它用固定状态机引导用户完成只读预检查、电视确认、应用选择、APK 下载与校验、安装、桌面/壁纸设置、现场验收和 ADB 安全收尾。
 
-当前版本：`v0.3.1`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
+当前版本：`v0.3.2`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
 
 ## 这个版本解决了什么
 
 | 状态 | 能力 | 行为 |
 |---|---|---|
-| ✅ | 问题内上下文 | 每个问题组件先显示上一轮结果、阻塞点、解决方法，再显示一个必答问题 |
+| ✅ | 简短问题与外置上下文 | 先在对话中展示上一轮结果表格、阻塞点和指引；组件只保留问题与选项，不往标题堆文字 |
 | ✅ | 不允许模糊回答 | “继续”“好的”“你决定”不会推进；仍显示原问题和原选项 |
 | ✅ | 自动预检查 | 首题前执行 `adb version` 与 `adb devices -l` 等被动只读检查，不扫描局域网、不连接未知地址 |
 | ✅ | 操作证据门禁 | 下载、安装、连接、诊断、Home、壁纸和退出复核都必须提交真实证据后才进入结果状态 |
@@ -20,16 +20,16 @@
 
 ## 安装包
 
-验收边界：116 项自动化测试通过；WorkBuddy、豆包的早期候选包已实测原生选择组，但最终包界面复测受电脑控制服务故障阻塞。Codex 最终包已实测只读预检；其四选项问题超过原生工具上限，会明确说明原因后显示完整文字选项。超出宿主选项上限或不支持的题型暂不分页，不保证每题均为原生组件。详见[测试报告](docs/platform-validation.md)。
+验收边界：本版针对“上下文表格 + 简短原生问题”进行四平台自动化回归及打包校验；未宣称本版客户端界面实测通过，交由用户新建会话验证。原生组件优先策略不回滚；超出宿主选项上限或不支持的题型仍明确提示后显示完整文字选项。详见[测试报告](docs/platform-validation.md)。
 
 | 平台 | 安装包 |
 |---|---|
-| WorkBuddy | `android-tv-apps-helper-workbuddy-v0.3.1.zip` |
-| 豆包工作 | `android-tv-apps-helper-doubao-work-v0.3.1.zip` |
-| Claude Desktop / Code | `android-tv-apps-helper-claude-v0.3.1.zip` |
-| Codex | `android-tv-apps-helper-codex-v0.3.1.zip`，或本仓库 repository plugin |
+| WorkBuddy | `android-tv-apps-helper-workbuddy-v0.3.2.zip` |
+| 豆包工作 | `android-tv-apps-helper-doubao-work-v0.3.2.zip` |
+| Claude Desktop / Code | `android-tv-apps-helper-claude-v0.3.2.zip` |
+| Codex | `android-tv-apps-helper-codex-v0.3.2.zip`，或本仓库 repository plugin |
 
-所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.1 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.1)。安装前可用：
+所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.2 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.2)。安装前可用：
 
 ```sh
 (cd 下载目录 && shasum -a 256 -c SHA256SUMS)
@@ -56,7 +56,7 @@
 请安装 Android TV Apps Helper Skill。
 
 Skill 安装包：
-https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.1/android-tv-apps-helper-workbuddy-v0.3.1.zip
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/android-tv-apps-helper-workbuddy-v0.3.2.zip
 
 安装完成后，请告诉我技能名称和版本；先不要连接或修改电视。
 ```
@@ -67,12 +67,12 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.1/a
 请只删除当前已安装的 Android TV Apps Helper Skill，不要删除其他 Skill。删除后告诉我结果。
 ```
 
-删除确认后，立即发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.1`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个已校验 WorkBuddy ZIP。
+删除确认后，立即发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.2`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个已校验 WorkBuddy ZIP。
 
 ### 2. 开始使用
 
 ```text
-请使用 Android TV Apps Helper 帮我检查并设置这台 Android 电视。请严格使用 Skill 生成的问题和选项：先自动做只读预检查；每轮把上一轮结果、阻塞点和解决方法放进当前问题组件；我没有明确选择时不要进入下一步。
+请使用 Android TV Apps Helper 帮我检查并设置这台 Android 电视。先自动做只读预检查；每轮先在对话中用表格和 ✅／❌／⚠️ 显示上一轮结果，再展示阻塞点和解决方法；原生选择组件只放简短问题与选项，不把上下文塞进标题。我没有明确选择时不要进入下一步。
 ```
 
 ## 豆包工作安装与使用
@@ -83,7 +83,7 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.1/a
 请安装 Android TV Apps Helper Skill。
 
 Skill 安装包：
-https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.1/android-tv-apps-helper-doubao-work-v0.3.1.zip
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/android-tv-apps-helper-doubao-work-v0.3.2.zip
 
 安装完成后，请告诉我技能名称和版本；先不要连接或修改电视。
 ```
@@ -100,7 +100,7 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.1/a
 
 ### 1. 从 GitHub 获取 repository plugin
 
-可让 Codex 从 Release 的 `android-tv-apps-helper-codex-v0.3.1.zip` 安装个人 Skill；开发者也可使用完整 repository plugin：
+可让 Codex 从 Release 的 `android-tv-apps-helper-codex-v0.3.2.zip` 安装个人 Skill；开发者也可使用完整 repository plugin：
 
 ```sh
 git clone https://github.com/HXWfromDJTU/android-tv-apps-helper.git

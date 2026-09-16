@@ -20,6 +20,32 @@ from tv_helper.workflow import build_question
 
 
 class NativeInteractionTests(unittest.TestCase):
+    def test_long_context_stays_outside_native_question_on_every_platform(self):
+        question = Question(
+            question_id="RETRY-Q1", state_id="RETRY", kind="single_choice",
+            prompt="接下来怎么处理？",
+            options=(Option("retry", "重新检查", "RETRY"), Option("safe_exit", "安全退出", "END")),
+            previous_result_summary="已完成预检查。",
+            blocker_summary="电视尚未授权。",
+            remediation_guidance=("请在电视上允许调试。" * 100,),
+            summary_rows=(
+                {"status": "completed", "item": "工具检查", "result": "可用"},
+                {"status": "failed", "item": "连接尝试", "result": "未成功"},
+            ),
+        )
+        for platform in ("claude", "codex", "workbuddy", "doubao-work"):
+            with self.subTest(platform=platform):
+                presentation = build_host_presentation(question, {
+                    "host_platform": platform, "interaction_surface": "structured_form",
+                })
+                self.assertEqual(presentation["mode"], "native_required")
+                self.assertEqual(presentation["tool_input"]["questions"][0]["question"], "接下来怎么处理？")
+                self.assertEqual(question.to_dict()["component_prompt"], "接下来怎么处理？")
+                context = presentation["context_markdown"]
+                for text in ("✅", "❌", "已完成预检查。", "电视尚未授权。", "请在电视上允许调试。" * 100):
+                    self.assertIn(text, context)
+                self.assertNotIn("接下来怎么处理？", context)
+
     def test_ask_user_question_platforms_share_valid_four_option_schema(self):
         question = build_question("PRECHECK_WIFI", {"precheck": {"rows": ()}})
         for platform in ("claude", "workbuddy", "doubao-work"):
@@ -66,7 +92,8 @@ class NativeInteractionTests(unittest.TestCase):
             self.assertEqual(presentation["mode"], "native_required")
             self.assertEqual(presentation["tool_name"], "AskUserQuestion")
             tool_question = presentation["tool_input"]["questions"][0]
-            self.assertIn("ADB 工具：未找到", tool_question["question"])
+            self.assertEqual(question.prompt, tool_question["question"])
+            self.assertIn("ADB 工具 | 未找到", presentation["context_markdown"])
             self.assertLessEqual(len(tool_question["header"]), 12)
             self.assertEqual(len(tool_question["options"]), 4)
             self.assertFalse(tool_question["multiSelect"])

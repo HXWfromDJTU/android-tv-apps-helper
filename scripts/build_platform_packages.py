@@ -93,13 +93,13 @@ def _skill_body(platform: str) -> str:
     if platform in {"workbuddy", "doubao-work", "claude"}:
         adapter = """## Host-native interaction adapter
 
-Render `presentation.context_markdown` immediately above the control when the native component cannot contain a Markdown table. Call `AskUserQuestion` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required`. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is unavailable or fails to render, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and observed error before using the returned text fallback.
+Always display `presentation.context_markdown` in visible conversation immediately before the control. Keep the card title/question limited to the supplied question; do not append results, risks or guidance. Call `AskUserQuestion` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required`. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is unavailable or fails to render, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and observed error before using the returned text fallback.
 
 """
     else:
         adapter = """## Host-native interaction adapter
 
-Render `presentation.context_markdown` immediately above the control when the native component cannot contain a Markdown table. Call `request_user_input` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required` and the tool is exposed. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is not exposed in the current Codex mode, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and reason `native_tool_not_exposed` before using the returned text fallback.
+Always display `presentation.context_markdown` in visible conversation immediately before the control. Keep the card title/question limited to the supplied question; do not append results, risks or guidance. Call `request_user_input` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required` and the tool is exposed. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is not exposed in the current Codex mode, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and reason `native_tool_not_exposed` before using the returned text fallback.
 
 """
     return body.replace("# Android TV Apps Helper\n", "# Android TV Apps Helper\n\n" + adapter, 1)

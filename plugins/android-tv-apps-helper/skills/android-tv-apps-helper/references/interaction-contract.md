@@ -8,7 +8,7 @@ The model must render questions produced by `workflow-entry`, `workflow-answer`,
 
 ## Question lock
 
-Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `kind`, `prompt`, stable options, `required: true`, `attempts`, previous result, progress, blocker, remediation guidance, evidence, table rows, and optional visual/attachment data. The harness also emits `component_prompt` and `component_options`. Native hosts must use those two fields; `component_prompt` is deliberately self-contained so a modal cannot hide the user's blocker in surrounding conversation.
+Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `kind`, `prompt`, stable options, `required: true`, `attempts`, previous result, progress, blocker, remediation guidance, evidence, table rows, and optional visual/attachment data. The harness also emits `component_prompt` (the question only) and `component_options`. Context belongs in the visible conversation immediately before the card, never appended to its title or question.
 
 Do not clear `pending_question` or enter the next state until the harness accepts the answer. On an invalid answer:
 
@@ -29,7 +29,7 @@ Initialize with `--surface auto`; the model does not choose the surface. The har
 
 UI failure is recorded only after `record-surface-failure` saves `question_id`, the immutable `presentation_id`, exact `tool_name`, one of `native_tool_not_exposed`, `native_tool_call_failed`, or `native_tool_render_failed`, and non-empty observed detail. The harness rejects failures from an older question, older rendering, or different tool. A missing host tool disables native controls for the session; a call or render failure falls back only for the current question, and the next compatible question retries the native control. Preserve the question ID, options, and state. Never emit raw `<widget>`, `<choices>`, `<visual-option>`, or fake HTML buttons. Do not call another product such as ChatCut merely to borrow its UI.
 
-For `structured_form`, the harness returns `tool_name`, exact `tool_input`, `context_markdown`, and `answer_value_map`. Call the tool rather than paraphrasing it. Render `context_markdown` directly above the control when the host cannot place a Markdown table inside it. The serialized `native_card_compatible` field is only a coarse four-option signal; the platform adapter must also enforce the host's exact option and question-type limits before using a native card. Otherwise the harness returns a complete text fallback with `question_not_native_compatible`: never omit choices, never preselect the recommendation, and never map `safe_exit` to a generic Other field. Keep the label-to-value map when a host returns display text. Mark blocking inputs `required`. For `explicit_consent`, use one initially unselected confirmation control containing the full action and impact; attachments and other fields are not consent.
+For `structured_form`, the harness returns `tool_name`, exact `tool_input`, `context_markdown`, and `answer_value_map`. Always display `context_markdown` directly above the control in visible conversation, then call the tool with exact parameters. The serialized `native_card_compatible` field is only a coarse four-option signal; the platform adapter must also enforce the host's exact option and question-type limits before using a native card. Otherwise the harness returns a complete text fallback with `question_not_native_compatible`: never omit choices, never preselect the recommendation, and never map `safe_exit` to a generic Other field. Keep the label-to-value map when a host returns display text. Mark blocking inputs `required`. For `explicit_consent`, show the full action and impact in the preceding context and preserve the exact confirmation question/options; attachments and other fields are not consent.
 
 ## Question types
 
@@ -51,7 +51,7 @@ Each interactive Agent reply contains, in order:
 5. Options with impact; mark one recommendation when useful but never preselect it.
 6. Exact accepted-answer format.
 
-For a native modal/card, keep items 1–5 inside the component. If the host cannot place a table in the component, put it immediately above and repeat the most important blocker inside the component. Never leave the context only in hidden chain-of-thought or surrounding prose.
+For a native modal/card, items 1–3 are visible conversation immediately before the control: an evidence table with ✅ completed, ❌ attempted but failed, ⚠️ attention, followed by blocker/risk and guidance. The card contains only the supplied question and options (items 4–5). Do not copy context into its title/question or hide it in reasoning. Preserve action names needed for explicit approval rather than truncating a confirmation. Text fallback keeps the same table-first order in one reply.
 
 The Agent may run already authorized work until the next decision, but every new conversational turn must end with a question and options. If the user asks a side question, answer briefly and then render the still-pending question again.
 

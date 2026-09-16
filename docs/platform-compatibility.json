@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "skill": "android-tv-apps-helper",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "validated_at": "2026-09-16",
   "core_contract": {
     "states": "S0-S11",
@@ -17,63 +17,44 @@
   },
   "platforms": {
     "codex": {
-      "distribution": "android-tv-apps-helper-codex-v0.3.1.zip or repository_plugin",
+      "distribution": "android-tv-apps-helper-codex-v0.3.2.zip or repository_plugin",
       "artifact_validation": "passed",
-      "final_installation": "passed_personal_skill_directory",
-      "final_entrypoint": "passed_tv_helper_help",
-      "live_invocation": "passed_codex_cli_0.154.0_noninteractive",
-      "native_choice": "not_passed_four_option_question_uses_question_not_native_compatible_fallback",
-      "live_evidence_phase": "final_release_zip",
-      "dialogue_contract": "passed_same_pending_question_and_visible_fallback_reason",
-      "safe_exit": "not_run_for_v0.3.1",
-      "deeper_live_flow": "not_run",
-      "desktop_gui": "not_run",
-      "physical_tv": "not_run"
+      "presentation_contract": "context_table_before_short_native_question",
+      "live_installation": "not_run_for_v0.3.2",
+      "live_invocation": "not_run_for_v0.3.2",
+      "native_choice_gui": "not_run_for_v0.3.2",
+      "physical_tv": "not_run",
+      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance."
     },
     "workbuddy": {
-      "distribution": "android-tv-apps-helper-workbuddy-v0.3.1.zip",
+      "distribution": "android-tv-apps-helper-workbuddy-v0.3.2.zip",
       "artifact_validation": "passed",
-      "candidate_installation": "passed_hash_verified_personal_skill_directory",
-      "candidate_entrypoint": "passed_tv_helper_help",
-      "live_evidence_phase": "initial_candidate_not_final_release_zip",
-      "final_installation": "passed_personal_skill_directory",
-      "final_entrypoint": "passed_tv_helper_help",
-      "final_gui": "blocked_computer_use_native_pipe_startup_failed",
-      "live_invocation": "passed_workbuddy_5.5.6_new_task",
-      "native_choice": "passed_AskUserQuestion_clickable_group",
-      "dialogue_contract": "candidate_passed_context_and_blocker_inside_native_prompt",
-      "safe_exit": "passed_native_label_mapped_to_safe_exit",
-      "deeper_live_flow": "not_run",
-      "physical_tv": "not_run"
+      "presentation_contract": "context_table_before_short_native_question",
+      "live_installation": "not_run_for_v0.3.2",
+      "live_invocation": "not_run_for_v0.3.2",
+      "native_choice_gui": "not_run_for_v0.3.2",
+      "physical_tv": "not_run",
+      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance."
     },
     "doubao-work": {
-      "distribution": "android-tv-apps-helper-doubao-work-v0.3.1.zip",
-      "required_execution_context": "local_computer",
+      "distribution": "android-tv-apps-helper-doubao-work-v0.3.2.zip",
       "artifact_validation": "passed",
-      "candidate_installation": "passed_gui_same_name_replace_and_security_detection",
-      "candidate_skill_enabled": true,
-      "live_evidence_phase": "initial_candidate_not_final_release_zip",
-      "final_installation": "passed_local_user_skill_directory_only",
-      "final_entrypoint": "passed_tv_helper_help",
-      "final_gui": "blocked_computer_use_native_pipe_startup_failed",
-      "final_cloud_copy_refresh": "not_verified",
-      "live_invocation": "passed_new_local_computer_task",
-      "native_choice": "passed_AskUserQuestion_native_radio_group",
-      "dialogue_contract": "passed_markdown_table_plus_context_rich_native_component",
-      "safe_exit": "passed_native_label_mapped_to_safe_exit_and_final_report",
-      "deeper_live_flow": "not_run",
-      "physical_tv": "not_run"
+      "presentation_contract": "context_table_before_short_native_question",
+      "live_installation": "not_run_for_v0.3.2",
+      "live_invocation": "not_run_for_v0.3.2",
+      "native_choice_gui": "not_run_for_v0.3.2",
+      "physical_tv": "not_run",
+      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance."
     },
     "claude": {
-      "distribution": "android-tv-apps-helper-claude-v0.3.1.zip",
+      "distribution": "android-tv-apps-helper-claude-v0.3.2.zip",
       "artifact_validation": "passed",
-      "live_installation": "not_run",
-      "live_invocation": "not_run",
-      "dialogue_contract": "not_run",
-      "safe_exit": "not_run",
-      "deeper_live_flow": "not_run",
+      "presentation_contract": "context_table_before_short_native_question",
+      "live_installation": "not_run_for_v0.3.2",
+      "live_invocation": "not_run_for_v0.3.2",
+      "native_choice_gui": "not_run_for_v0.3.2",
       "physical_tv": "not_run",
-      "note": "Live validation remains deferred by the user; package contract only for v0.3.1."
+      "note": "Client validation deferred by user."
     }
   }
 }

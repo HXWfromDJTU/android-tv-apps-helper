@@ -264,7 +264,7 @@ class DialogueContractTests(unittest.TestCase):
         self.assertIn("小米电视 MiTV-ASTP0", finish)
         self.assertIn("关闭 ADB 调试", finish)
 
-    def test_native_component_prompt_contains_progress_blocker_guidance_and_real_model(self):
+    def test_native_context_preserves_risk_outside_short_component_prompt(self):
         question = build_question(
             "WALLPAPER",
             {
@@ -273,15 +273,18 @@ class DialogueContractTests(unittest.TestCase):
             },
         )
         payload = question.to_dict()
-        self.assertIn("上一轮/当前进度", payload["component_prompt"])
-        self.assertIn("MiTV-ASTP0", payload["component_prompt"])
-        self.assertIn("该型号大概率失败", payload["component_prompt"])
-        self.assertIn("几天后", payload["component_prompt"])
+        from tv_helper.presentation import render_context_markdown
+        context = render_context_markdown(question)
+        self.assertEqual(payload["component_prompt"], question.prompt)
+        self.assertIn("上一轮/当前进度", context)
+        self.assertIn("MiTV-ASTP0", context)
+        self.assertIn("该型号大概率失败", context)
+        self.assertIn("几天后", context)
 
     def test_short_text_component_does_not_offer_fake_submit_option(self):
         payload = build_question("DISCOVERY-IP", {}).to_dict()
         self.assertNotIn("submit_ip", {item["value"] for item in payload["component_options"]})
-        self.assertIn("IP:", payload["component_prompt"])
+        self.assertIn("IP:", render_question(build_question("DISCOVERY-IP", {})))
 
     def test_finish_safety_rejects_claim_when_adb_still_responds(self):
         with tempfile.TemporaryDirectory() as directory:

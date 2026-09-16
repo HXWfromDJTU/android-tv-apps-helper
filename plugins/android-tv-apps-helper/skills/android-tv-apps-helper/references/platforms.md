@@ -15,7 +15,7 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 - Use the repository plugin/marketplace or the canonical project Skill.
 - Resolve the harness relative to the plugin Skill and initialize with `--host-platform codex --execution-context local_computer`.
 - Call `request_user_input` whenever `presentation.mode` is `native_required` and the tool is exposed in the current mode. If it is not exposed, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, reason `native_tool_not_exposed`, and the observed limitation before showing text.
-- A repository/plugin install must be removed and reinstalled from the v0.3.1 candidate for live acceptance; package presence alone is not invocation evidence.
+- A repository/plugin install must be removed and reinstalled from the v0.3.2 candidate for live acceptance; package presence alone is not invocation evidence.
 
 ## WorkBuddy
 
@@ -23,7 +23,7 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 - Locate the installed Skill root, run `python3 scripts/tv-helper`, and initialize with `--host-platform workbuddy --execution-context local_computer`.
 - Call `AskUserQuestion` with the exact returned `presentation.tool_input` whenever `presentation.mode` is `native_required`. A prose list is a failure, not an equivalent rendering.
 - Treat the installed-Skill list and a new-conversation invocation as evidence; a download message alone is not installation evidence.
-- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.1`.
+- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.2`.
 
 ## 豆包工作
 
@@ -36,10 +36,10 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 
 ## Equivalent first business turn
 
-After update handling and automatic passive precheck, every platform starts at `PRECHECK-WIFI-Q1`. Its three-to-six-row table contains the actual precheck results, its blocker is inside the component, and it asks whether computer and TV use the same Wi-Fi. It never asks permission to begin precheck. An ambiguous answer such as “继续” redisplays the same question, context, and options and executes no later command.
+After update handling and automatic passive precheck, every platform starts at `PRECHECK-WIFI-Q1`. Display its actual results in a visible three-to-six-row status table, then blocker and guidance, immediately before the native component. The component asks only whether computer and TV use the same Wi-Fi, with the supplied choices. It never asks permission to begin precheck. An ambiguous answer such as “继续” redisplays the same context, short question and options and executes no later command.
 
 ## Rendering and validation
 
-`native_required` means the Agent must call the named tool; it may not answer with Markdown instead. Text is permitted only when the harness returns `text_fallback`, either because the current question is incompatible or because `record-surface-failure` stored a real host failure. If a native component cannot contain a Markdown table, its self-contained prompt still repeats every key result, blocker, and remediation step. Record that degradation in `docs/platform-validation.md`.
+`native_required` means the Agent must show `context_markdown` in visible conversation and then call the named tool with exact `tool_input`; it may not substitute a Markdown choices list. Keep all results, blockers, risks and guidance outside the component title/question. This table-before-short-card layout is intentional on all platforms, not a fallback. Text choices are permitted only for `text_fallback`, after question incompatibility or a recorded real host failure.
 
 For every live host, separately record: old version visible, removal visible, candidate installed and version visible, explicit invocation, automatic precheck, invalid-answer lock, app-selection/named confirmation, finish-safety rendering, and any unavailable local-computer or native-control capability. Redact account names, SSID, IP, and serial from public evidence.

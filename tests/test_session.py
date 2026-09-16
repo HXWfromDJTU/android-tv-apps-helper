@@ -62,7 +62,7 @@ class SessionStoreTests(unittest.TestCase):
             self.assertEqual(data["target_serial"], "192.0.2.20:5555")
             self.assertEqual(data["approved_plan"]["plan_id"], "PLAN-old")
             self.assertTrue(data["approved_plan"]["requires_revalidation"])
-            self.assertEqual(data["workflow_revision"], "v0.3.1")
+            self.assertEqual(data["workflow_revision"], "v0.3.2")
             self.assertIn("summary_rows", data)
 
     def test_question_context_survives_invalid_answer(self):

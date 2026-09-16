@@ -49,23 +49,8 @@ class Question:
     display_name: str | None = None
 
     def component_prompt(self) -> str:
-        """Return a host-ready prompt that keeps context inside the question card."""
-        parts: list[str] = []
-        if self.previous_result_summary:
-            parts.append(f"上一轮/当前进度：{self.previous_result_summary}")
-        if self.summary_rows:
-            compact = "；".join(
-                f"{row.get('item', '事项')}：{row.get('result', '')}"
-                for row in self.summary_rows[:6]
-            )
-            if compact:
-                parts.append(f"检查结果：{compact}")
-        if self.blocker_summary:
-            parts.append(f"当前阻塞/风险：{self.blocker_summary}")
-        if self.remediation_guidance:
-            parts.append("处理方法：" + "；".join(self.remediation_guidance[:6]))
-        parts.append(f"问题：{self.prompt}")
-        return "\n".join(parts)
+        """Keep the card concise; presentation.context_markdown carries context."""
+        return self.prompt
 
     def component_options(self) -> list[dict[str, Any]]:
         """Options suitable for native cards; omit the synthetic text-submit row."""

@@ -20,10 +20,10 @@ python3 ../../scripts/tv-helper init-session <artifact-dir>/session.json --surfa
 Run the entry command immediately. It checks the official stable Release, honors the persistent 24-hour update snooze, and runs the limited read-only precheck. Keep the working version until its replacement identity, version, and SHA-256 pass. Precheck may locate ADB and run `adb version` and `adb devices -l`; it cannot scan or connect.
 
 ```sh
-python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.1
+python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.2
 ```
 
-Obey `presentation`. For `native_required`, render `context_markdown` immediately above the control when the native component cannot contain a Markdown table, then call `tool_name` with `tool_input`. Never print the choices as a text menu, and map the selected label through `answer_value_map`. On an observed native-tool failure, record it before using text:
+For `native_required`, always display `context_markdown` visibly before calling `tool_name` with exact `tool_input`. The card contains only the question and choices; results, risks and guidance stay outside. Never append context to the title/question or substitute text choices. Map labels through `answer_value_map`. Record observed native-tool failures before using text:
 
 ```sh
 python3 ../../scripts/tv-helper record-surface-failure <artifact-dir>/session.json --question-id <presentation.question_id> --presentation-id <presentation.presentation_id> --tool-name <presentation.tool_name> --reason <native_tool_not_exposed|native_tool_call_failed|native_tool_render_failed> --detail <observed-error>
@@ -39,7 +39,7 @@ Submit the exact visible answer through:
 python3 ../../scripts/tv-helper workflow-answer <artifact-dir>/session.json --question-id <current-id> --value <answer>
 ```
 
-On exit code 2, render the returned same question, table, blocker, and guidance. Do not execute any later action. Do not replace a pending question. Every reply contains the previous result/progress inside the active component, exactly one required question, mutually exclusive options, and an accepted-answer format.
+On exit code 2, redisplay the context table, blocker and guidance, then the same short question and options. Do not execute any later action or replace a pending question. Each reply has visible previous results/progress, one required question, mutually exclusive options, and an accepted-answer format.
 
 When the result contains `action_required`, execute only that approved action. Record real stdout/stderr, exit code, inspected identity/hash, or read-only check in an evidence JSON object, then submit it before displaying any completion state:
 
