@@ -21,10 +21,10 @@
       "artifact_validation": "passed",
       "stable_installation": "passed_hash_verified_personal_skill_directory",
       "stable_entrypoint": "passed_tv_helper_help",
-      "live_invocation": "passed_rc4_codex_cli_0.154.0",
-      "dialogue_contract": "passed_table_first_and_invalid_answer_lock",
-      "safe_exit": "passed_live_text_menu_zero",
-      "stable_dialogue": "not_run",
+      "live_invocation": "passed_stable_codex_cli_0.154.0",
+      "dialogue_contract": "passed_stable_table_first_and_installed_harness_invalid_answer_lock",
+      "safe_exit": "passed_stable_installed_harness_text_menu_zero",
+      "stable_dialogue": "passed_first_turn_plus_harness_continuation",
       "deeper_live_flow": "not_run",
       "desktop_gui": "not_automatable_by_computer_use_policy",
       "physical_tv": "not_run"
@@ -37,7 +37,7 @@
       "live_invocation": "passed_rc4_new_task",
       "dialogue_contract": "passed_native_card_and_invalid_answer_lock",
       "safe_exit": "passed_live_native_stable_value_visual_row_4",
-      "stable_dialogue": "not_run",
+      "stable_dialogue": "blocked_workbuddy_5.5.6_blank_result_pane_after_task_submission",
       "deeper_live_flow": "not_run",
       "direct_rc4_github_install": "blocked_502_connect_tunnel",
       "physical_tv": "not_run"
