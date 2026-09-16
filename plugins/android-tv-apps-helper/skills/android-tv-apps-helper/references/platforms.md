@@ -14,8 +14,8 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 
 - Use the repository plugin/marketplace or the canonical project Skill.
 - Resolve the harness relative to the plugin Skill and initialize with `--host-platform codex --execution-context local_computer`.
-- Call `request_user_input` whenever `presentation.mode` is `native_required` and the tool is exposed in the current mode. If it is not exposed, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, reason `native_tool_not_exposed`, and the observed limitation before showing text.
-- A repository/plugin install must be removed and reinstalled from the v0.3.2 candidate for live acceptance; package presence alone is not invocation evidence.
+- Call `request_user_input` whenever `presentation.mode` is `native_required`. If it is not exposed, record `native_tool_not_exposed` with the returned question/presentation/tool identity, then show the blocked-status table and pause. Never substitute numbered text choices.
+- A repository/plugin install must be removed and reinstalled from the v0.3.3 candidate for live acceptance; package presence alone is not invocation evidence.
 
 ## WorkBuddy
 
@@ -23,14 +23,14 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 - Locate the installed Skill root, run `python3 scripts/tv-helper`, and initialize with `--host-platform workbuddy --execution-context local_computer`.
 - Call `AskUserQuestion` with the exact returned `presentation.tool_input` whenever `presentation.mode` is `native_required`. A prose list is a failure, not an equivalent rendering.
 - Treat the installed-Skill list and a new-conversation invocation as evidence; a download message alone is not installation evidence.
-- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.2`.
+- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.3`.
 
 ## 豆包工作
 
 - Install the Doubao Work ZIP from its GitHub Release URL in an Agent conversation; use 技能管理中的本地导入 as fallback.
 - Start a 本地电脑 task. Never use 云电脑 for ADB because it cannot safely reach the Android TV on the user's local network.
 - Locate the installed Skill root, run `python3 scripts/tv-helper`, and initialize with `--host-platform doubao-work --execution-context local_computer`.
-- Call `AskUserQuestion` with the exact returned `presentation.tool_input` whenever that tool is exposed and `presentation.mode` is `native_required`. If the host rejects the call, record the concrete error together with the returned `question_id`, `presentation_id`, and `tool_name` before falling back.
+- Call `AskUserQuestion` with exact `presentation.tool_input` for `native_required`. Record observed errors with the returned question/presentation/tool identity; use the single native retry or pause at `native_blocked`, never text choices.
 - Invoke from `/`, 更多技能, or an explicit request to use Android TV Apps Helper. Verify the Skill is visible before claiming installation.
 - Use a new local-computer conversation after reinstall so cached old instructions are not mistaken for the new version.
 
@@ -40,6 +40,8 @@ After update handling and automatic passive precheck, every platform starts at `
 
 ## Rendering and validation
 
-`native_required` means the Agent must show `context_markdown` in visible conversation and then call the named tool with exact `tool_input`; it may not substitute a Markdown choices list. Keep all results, blockers, risks and guidance outside the component title/question. This table-before-short-card layout is intentional on all platforms, not a fallback. Text choices are permitted only for `text_fallback`, after question incompatibility or a recorded real host failure.
+Use `record-surface-failure` for each observed native-tool failure; its response determines retry versus pause.
+
+`native_required` means show `context_markdown` in visible conversation then call the named tool with exact `tool_input`. Keep results, blockers, risks and guidance outside the short title/question. Excess choices are paginated natively; input and large multi-select use the harness's native stages. Submit callbacks with `workflow-native-answer` and the current presentation ID. The supplemental input belongs after the choices, using the host's built-in field. If the host lacks the required tool or input field, report that limitation and pause; never fake a UI or request numbered chat answers.
 
 For every live host, separately record: old version visible, removal visible, candidate installed and version visible, explicit invocation, automatic precheck, invalid-answer lock, app-selection/named confirmation, finish-safety rendering, and any unavailable local-computer or native-control capability. Redact account names, SSID, IP, and serial from public evidence.

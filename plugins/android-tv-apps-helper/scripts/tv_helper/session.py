@@ -62,7 +62,7 @@ class SessionStore:
                 "candidate_ip": None,
                 "approved_plan": None,
                 "history": [],
-                "workflow_revision": "v0.3.2",
+                "workflow_revision": "v0.3.3",
                 "session_sequence": 0,
                 "interaction_capabilities": {
                     "native_status": "pending" if resolved_surface == "structured_form" else "unavailable",
@@ -118,7 +118,7 @@ class SessionStore:
         migrated = dict(data)
         migrated["schema_version"] = 3
         defaults = {
-            "workflow_revision": "v0.3.2",
+            "workflow_revision": "v0.3.3",
             "session_sequence": 0,
             "interaction_capabilities": {},
             "update_check": {},
@@ -148,7 +148,7 @@ class SessionStore:
             migrated["approved_plan"] = {
                 **migrated["approved_plan"],
                 "requires_revalidation": True,
-                "revalidation_reason": "Session migrated to workflow revision v0.3.2.",
+                "revalidation_reason": "Session migrated to workflow revision v0.3.3.",
             }
         return migrated
 
@@ -173,8 +173,6 @@ class SessionStore:
         data = self.read()
         if not data.get("pending_question"):
             raise AnswerError("没有待答问题时不能降级交互界面。")
-        if data.get("interaction_surface") != "structured_form":
-            raise AnswerError("当前会话已经不是原生组件模式。")
         from .presentation import build_host_presentation
 
         pending = Question.from_dict(data["pending_question"])
@@ -196,13 +194,28 @@ class SessionStore:
             "presentation_id": presentation_id,
             "tool_name": tool_name,
         }
-        if reason == "native_tool_not_exposed":
-            data["interaction_surface"] = "text_menu"
-        else:
-            failure["fallback_question_id"] = data["pending_question"]["question_id"]
+        previous = data.get("interaction_capabilities") or {}
+        count = int(previous.get("failure_count", 0)) + 1 if previous.get("question_id") == question_id else 1
+        failure["failure_count"] = count
+        failure["native_status"] = "blocked" if reason == "native_tool_not_exposed" or count >= 2 else "retry"
+        data["interaction_surface"] = "structured_form"
         data["interaction_capabilities"] = failure
         data["updated_at"] = _timestamp()
         self._write(data)
+
+    def update_interaction_ui(self, ui: dict[str, Any]) -> None:
+        data = self.read()
+        if not data.get("pending_question"):
+            raise AnswerError("当前没有待答问题。")
+        data["interaction_ui"] = {**ui, "revision": uuid.uuid4().hex}
+        data["interaction_capabilities"] = {"native_status": "pending", "last_failure": data.get("interaction_capabilities")}
+        self._write(data)
+
+    def resume_native(self, question_id: str) -> None:
+        data = self.read()
+        if (data.get("pending_question") or {}).get("question_id") != question_id:
+            raise AnswerError("恢复目标不是当前问题。")
+        self.update_interaction_ui(data.get("interaction_ui") or {})
 
     def set_question(self, question: Question) -> None:
         data = self.read()
@@ -214,6 +227,7 @@ class SessionStore:
         data["current_state"] = question.state_id
         data["pending_question"] = question.to_dict()
         data["question_instance_id"] = uuid.uuid4().hex
+        data["interaction_ui"] = {}
         data["updated_at"] = _timestamp()
         self._write(data)
 
@@ -250,7 +264,7 @@ class SessionStore:
             }
         )
         capabilities = data.get("interaction_capabilities") or {}
-        if capabilities.get("fallback_question_id") == question.question_id:
+        if capabilities.get("question_id") == question.question_id or capabilities.get("fallback_question_id") == question.question_id:
             data["interaction_capabilities"] = {
                 "native_status": "pending",
                 "last_failure": capabilities,

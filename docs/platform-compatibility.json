@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "skill": "android-tv-apps-helper",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "validated_at": "2026-09-16",
   "core_contract": {
     "states": "S0-S11",
@@ -17,44 +17,48 @@
   },
   "platforms": {
     "codex": {
-      "distribution": "android-tv-apps-helper-codex-v0.3.2.zip or repository_plugin",
+      "distribution": "android-tv-apps-helper-codex-v0.3.3.zip or repository_plugin",
       "artifact_validation": "passed",
-      "presentation_contract": "context_table_before_short_native_question",
-      "live_installation": "not_run_for_v0.3.2",
-      "live_invocation": "not_run_for_v0.3.2",
-      "native_choice_gui": "not_run_for_v0.3.2",
+      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
+      "live_installation": "not_run_for_v0.3.3",
+      "live_invocation": "not_run_for_v0.3.3",
+      "native_choice_gui": "not_run_for_v0.3.3",
       "physical_tv": "not_run",
-      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance."
+      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance.",
+      "packaged_cli_multiturn": "passed_first_question_second_question_action_failure_native_pagination"
     },
     "workbuddy": {
-      "distribution": "android-tv-apps-helper-workbuddy-v0.3.2.zip",
+      "distribution": "android-tv-apps-helper-workbuddy-v0.3.3.zip",
       "artifact_validation": "passed",
-      "presentation_contract": "context_table_before_short_native_question",
-      "live_installation": "not_run_for_v0.3.2",
-      "live_invocation": "not_run_for_v0.3.2",
-      "native_choice_gui": "not_run_for_v0.3.2",
+      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
+      "live_installation": "not_run_for_v0.3.3",
+      "live_invocation": "not_run_for_v0.3.3",
+      "native_choice_gui": "not_run_for_v0.3.3",
       "physical_tv": "not_run",
-      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance."
+      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance.",
+      "packaged_cli_multiturn": "passed_first_question_second_question_action_failure_native_pagination"
     },
     "doubao-work": {
-      "distribution": "android-tv-apps-helper-doubao-work-v0.3.2.zip",
+      "distribution": "android-tv-apps-helper-doubao-work-v0.3.3.zip",
       "artifact_validation": "passed",
-      "presentation_contract": "context_table_before_short_native_question",
-      "live_installation": "not_run_for_v0.3.2",
-      "live_invocation": "not_run_for_v0.3.2",
-      "native_choice_gui": "not_run_for_v0.3.2",
+      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
+      "live_installation": "not_run_for_v0.3.3",
+      "live_invocation": "not_run_for_v0.3.3",
+      "native_choice_gui": "not_run_for_v0.3.3",
       "physical_tv": "not_run",
-      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance."
+      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance.",
+      "packaged_cli_multiturn": "passed_first_question_second_question_action_failure_native_pagination"
     },
     "claude": {
-      "distribution": "android-tv-apps-helper-claude-v0.3.2.zip",
+      "distribution": "android-tv-apps-helper-claude-v0.3.3.zip",
       "artifact_validation": "passed",
-      "presentation_contract": "context_table_before_short_native_question",
-      "live_installation": "not_run_for_v0.3.2",
-      "live_invocation": "not_run_for_v0.3.2",
-      "native_choice_gui": "not_run_for_v0.3.2",
+      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
+      "live_installation": "not_run_for_v0.3.3",
+      "live_invocation": "not_run_for_v0.3.3",
+      "native_choice_gui": "not_run_for_v0.3.3",
       "physical_tv": "not_run",
-      "note": "Client validation deferred by user."
+      "note": "Client validation deferred by user.",
+      "packaged_cli_multiturn": "passed_first_question_second_question_action_failure_native_pagination"
     }
   }
 }

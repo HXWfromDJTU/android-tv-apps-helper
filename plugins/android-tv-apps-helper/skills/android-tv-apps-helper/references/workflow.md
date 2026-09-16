@@ -20,7 +20,7 @@ The first business question is `PRECHECK-WIFI-Q1`. Its table shows what was actu
 
 ## Discovery and target lock
 
-Zero devices uses `DISCOVERY-NONE-Q1`. The component includes the previous attempt number, blocker, same-Wi-Fi/ADB/IP/RSA instructions, and one non-duplicated choice among passive retry, IP entry, brand guide, limited-scan details, or safe exit. Active scanning needs a separate scope display and approval.
+Zero devices uses `DISCOVERY-NONE-Q1`. Context above the short component includes attempt count, blocker and same-Wi-Fi/ADB/IP/RSA instructions. Choices are passive retry, IP entry, brand guide, limited-scan details and safe exit; use native pages, never text-menu fallback. Active scanning needs separate scope display and approval. For an approved `PASSIVE-DISCOVERY-ACTION`, use `workflow-discover <session>` to execute and record fresh results together; no reused entry snapshot. A failed check means device count unknown, not zero.
 
 For `unauthorized`, keep the same target candidate and ask about the television RSA prompt. For `offline`, reconnect only the selected target and never kill a shared ADB server when another device is active. For multiple devices, show manufacturer/model evidence and require one choice.
 
@@ -40,7 +40,7 @@ Selecting a task performs no mutation.
 
 ## Application selection and approvals
 
-`APPS-Q1` shows index, name, purpose, version, installed state, and availability. Disable already-current, rights-blocked, missing, incompatible, or unverified entries before selection. Use native multi-select or the text format `1、2、3`.
+`APPS-Q1` shows index, name, purpose, version, installed state, and availability. Unavailable entries remain explained in the table but are not selectable. Use native multi-select when it fits; otherwise use native add/remove pages then “完成选择”. Never request numbered chat answers.
 
 After valid selection, `DOWNLOAD-CONFIRM-Q1` repeats every selected name and version. Confirming it permits only source resolution, download, and file validation. The subsequent immutable install plan binds friendly plan name, hidden internal plan ID, target serial, APK SHA-256, command, impact, risk, and recovery. Installation requires another exact approval.
 
@@ -56,7 +56,7 @@ After Emotn launch verification:
 
 1. Ask whether to change the Home-key default launcher.
 2. Ask whether to upload one custom wallpaper or use Emotn's default.
-3. Every wallpaper component states that firmware may reset it after days, reboot, system update, or launcher update.
+3. Context preceding every wallpaper component states that firmware may reset it after days, reboot, system update, or launcher update.
 4. A custom image must be PNG/JPEG/WebP, at most 20 MB, and requires a separate apply confirmation.
 5. Missing/invalid/failed upload remains on the same question and never implies default-wallpaper consent.
 6. Keep the factory launcher package and data installed and enabled.

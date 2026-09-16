@@ -70,7 +70,8 @@ class CliTests(unittest.TestCase):
             self.assertEqual((code, error), (0, ""))
             started = json.loads(output)
             self.assertEqual(started["question"]["question_id"], "PRECHECK-WIFI-Q1")
-            self.assertIn("| 状态 |", started["rendered"])
+            self.assertIn("| 状态 |", started["presentation"]["context_markdown"])
+            self.assertEqual(started["presentation"]["mode"], "native_required")
 
             code, output, error = self.run_cli(
                 [
@@ -78,6 +79,8 @@ class CliTests(unittest.TestCase):
                     str(session),
                     "--question-id",
                     "PRECHECK-WIFI-Q1",
+                    "--presentation-id",
+                    started["presentation"]["presentation_id"],
                     "--value",
                     "继续",
                 ]
@@ -96,8 +99,11 @@ class CliTests(unittest.TestCase):
             store = SessionStore(session)
             store.update_fields(current_state="DOWNLOAD-CONFIRM", selected_apps=["smarttube"])
             store.set_question(build_question("DOWNLOAD-CONFIRM", store.read()))
+            from tv_helper.presentation import build_host_presentation
+            view = build_host_presentation(build_question("DOWNLOAD-CONFIRM", store.read()), store.read())
+            approve = next(option.value for option in build_question("DOWNLOAD-CONFIRM", store.read()).options if option.next_state == "DOWNLOAD-ACTION")
             code, output, error = self.run_cli(
-                ["workflow-answer", str(session), "--question-id", "DOWNLOAD-CONFIRM-Q1", "--value", "1"]
+                ["workflow-native-answer", str(session), "--question-id", "DOWNLOAD-CONFIRM-Q1", "--presentation-id", view["presentation_id"], "--value", approve]
             )
             self.assertEqual((code, error), (0, ""))
             self.assertEqual(json.loads(output)["action_required"]["action_id"], "DOWNLOAD-ACTION")

@@ -240,6 +240,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
         )
     if state == "DISCOVERY-NONE":
         attempts = int(context.get("attempts", (context.get("precheck") or {}).get("attempts", 1)))
+        check_failed = (context.get("precheck") or {}).get("execution_ok") is False
         return Question(
             question_id="DISCOVERY-NONE-Q1",
             state_id=state,
@@ -252,11 +253,11 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
                 Option("approve_scan", "查看有限局域网扫描范围", "DISCOVERY-SCAN", "先显示范围，再单独批准"),
                 _safe_exit("FINISH-SAFETY"),
             ),
-            previous_result_summary=f"第 {attempts} 次被动检查仍未发现已授权设备。",
+            previous_result_summary=(f"第 {attempts} 次被动检查未完成，当前设备数量未知。" if check_failed else f"第 {attempts} 次被动检查仍未发现已授权设备。"),
             blocker_summary="当前没有可确认的电视；零结果不能证明电视未开启 ADB。",
             remediation_guidance=ADB_GUIDANCE,
             summary_rows=(
-                {"status": "attention", "item": "设备发现", "result": f"第 {attempts} 次：0 个可确认设备"},
+                {"status": "failed" if check_failed else "attention", "item": "设备发现", "result": f"第 {attempts} 次：检查失败，设备数量未知" if check_failed else f"第 {attempts} 次：0 个可确认设备"},
                 {"status": "pending", "item": "主动扫描", "result": "未执行"},
             ),
             visual_aid="assets/adb-enable-generic.svg",
@@ -923,6 +924,53 @@ class WorkflowEngine:
             return question
         return self.start(precheck)
 
+    def submit_native(self, raw: str | list[str], *, question_id: str, presentation_id: str) -> dict[str, Any]:
+        from .presentation import build_host_presentation
+
+        data = self.store.read()
+        if not data.get("pending_question"):
+            raise AnswerError("当前没有待回答的问题。")
+        question = Question.from_dict(data["pending_question"])
+        view = build_host_presentation(question, data)
+        if view["mode"] != "native_required" or question_id != question.question_id or presentation_id != view["presentation_id"]:
+            raise AnswerError("原生选择回调已过期、被阻塞或与当前问题不匹配。")
+        mapping = view["answer_value_map"]
+        visible = set(mapping.values())
+        if isinstance(raw, list):
+            if not view["native_multi"] or not raw or not all(isinstance(item, str) for item in raw):
+                raise AnswerError("当前组件不接受这组多选答案。")
+            values = [mapping.get(item, item) for item in raw]
+            if any(item not in visible for item in values):
+                raise AnswerError("答案包含当前组件之外的选项。")
+            return self.submit(",".join(values), question_id=question_id)
+        value = mapping.get(raw, raw)
+        if value not in visible:
+            if view["accepts_free_input"]:
+                if not question.input_prefix or not raw.strip().startswith(question.input_prefix):
+                    raise AnswerError(f"请在补充输入框使用 {question.input_prefix} 格式；返回/退出请点击当前选项。")
+                return self.submit(raw, question_id=question_id)
+            raise AnswerError("请使用当前原生组件的选项；补充内容不能代替明确选择。")
+        ui = dict(data.get("interaction_ui") or {})
+        if value == "ui:next":
+            ui["page"] = (int(ui.get("page", 0)) + 1) % view["page_count"]
+        elif value == "ui:input":
+            ui.update(input_open=True, page=0)
+        elif value == "ui:cancel_input":
+            ui.update(input_open=False, page=0)
+        elif value.startswith("ui:toggle:"):
+            selected = set(ui.get("selected", ()))
+            item = value.removeprefix("ui:toggle:")
+            selected.symmetric_difference_update({item})
+            ui["selected"] = [option.value for option in question.options if option.value in selected]
+        elif value == "ui:done":
+            return self.submit(",".join(ui.get("selected", ())), question_id=question_id)
+        elif value == "ui:refresh":
+            pass
+        else:
+            return self.submit(value, question_id=question_id)
+        self.store.update_interaction_ui(ui)
+        return {"accepted": True, "question": question, "ui_only": True}
+
     def submit(self, raw: str | None, *, question_id: str) -> dict[str, Any]:
         data = self.store.read()
         pending = data.get("pending_question")
@@ -1206,6 +1254,13 @@ class WorkflowEngine:
             return {"accepted": True, "record": record, "question": None}
 
         if status != "completed":
+            if action_id == "PASSIVE-DISCOVERY-ACTION":
+                fresh = evidence.get("precheck") or {}
+                context["precheck"] = {
+                    **fresh, "execution_ok": False,
+                    "attempts": int((context.get("precheck") or {}).get("attempts", 0)) + 1,
+                }
+                self.store.update_fields(precheck=context["precheck"])
             retry_state = {
                 "UPDATE-ACTION": "UPDATE",
                 "ADB-VALIDATE-ACTION": "ADB-SETUP",
@@ -1258,8 +1313,8 @@ class WorkflowEngine:
                 "devices": evidence.get("devices", ()),
                 "rows": evidence.get("rows", context.get("precheck", {}).get("rows", ())),
             }
-            discovered["attempts"] = int(discovered.get("attempts", 0)) + 1
-            self.store.update_fields(precheck=discovered)
+            discovered["attempts"] = int((context.get("precheck") or {}).get("attempts", 0)) + 1
+            self.store.update_fields(precheck=discovered, **({"adb_path": discovered["adb_path"]} if discovered.get("adb_path") else {}))
             context["precheck"] = discovered
             devices = tuple(discovered.get("devices", ()))
             if len(devices) == 1:

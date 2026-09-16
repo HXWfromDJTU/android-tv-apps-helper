@@ -94,6 +94,20 @@ def validate_action_evidence(
         if not isinstance(precheck, dict):
             raise ValueError("被动发现必须包含 precheck 和 commands。")
         _require(precheck, ("rows",), "被动发现")
+        if not isinstance(precheck.get("devices"), list):
+            raise ValueError("被动发现必须回传本次 devices 列表；缺失列表不能当作零设备。")
+        if "execution_ok" in precheck and precheck["execution_ok"] is not True:
+            raise ValueError("执行失败的被动检查不能标记完成。")
+        if "devices_exit_code" in precheck and precheck["devices_exit_code"] != 0:
+            raise ValueError("设备列表命令退出码非零。")
+        if not any(command[1:] == ["devices", "-l"] for command in commands):
+            raise ValueError("被动发现必须实际运行 devices -l。")
+        if "devices_output" in precheck:
+            from .adb import parse_devices
+            parsed = [(d.serial, d.state, tuple(d.details)) for d in parse_devices(str(precheck["devices_output"]))]
+            listed = [(d.get("serial"), d.get("state"), tuple(d.get("details", ()))) for d in precheck["devices"]]
+            if parsed != listed:
+                raise ValueError("本次设备列表与原始 ADB 输出矛盾，不能使用旧快照。")
         allowed_suffixes = {("version",), ("devices", "-l")}
         if any(tuple(command[1:]) not in allowed_suffixes for command in commands):
             raise ValueError("被动发现只能运行 adb version 和 adb devices -l。")

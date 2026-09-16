@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import shutil
 import socket
 import subprocess
 import ipaddress
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from .adb import parse_devices
+from .adb import AdbError, find_adb, parse_devices
 
 
 def classify_discovered_device(device: dict[str, Any]) -> str:
@@ -116,9 +115,12 @@ def run_passive_precheck(
     network_probe: Callable[[], str | None] = probe_local_address,
 ) -> dict[str, Any]:
     local_address = network_probe()
-    resolved = adb_path or shutil.which("adb")
+    try:
+        resolved = adb_path or str(find_adb())
+    except AdbError:
+        resolved = None
     if not resolved or (command_runner is subprocess.run and not Path(resolved).is_file()):
-        return make_precheck_result(
+        failed = make_precheck_result(
             adb_available=False,
             adb_version=None,
             devices=(),
@@ -126,6 +128,7 @@ def run_passive_precheck(
             wifi_name=None,
             adb_path=None,
         )
+        return {**failed, "execution_ok": False, "error": "未找到可用 ADB"}
     try:
         version_result = command_runner(
             [resolved, "version"], capture_output=True, text=True, check=False, timeout=5
@@ -133,18 +136,19 @@ def run_passive_precheck(
         devices_result = command_runner(
             [resolved, "devices", "-l"], capture_output=True, text=True, check=False, timeout=5
         )
-    except OSError:
-        return make_precheck_result(
+    except (OSError, subprocess.TimeoutExpired) as error:
+        failed = make_precheck_result(
             adb_available=False, adb_version=None, devices=(),
             local_address=local_address, wifi_name=None, adb_path=None,
         )
+        return {**failed, "execution_ok": False, "error": str(error)}
     version = None
     if version_result.returncode == 0 and version_result.stdout:
         version = version_result.stdout.splitlines()[0].strip()
     devices = ()
     if devices_result.returncode == 0:
         devices = tuple(device.__dict__ for device in parse_devices(devices_result.stdout))
-    return make_precheck_result(
+    result = make_precheck_result(
         adb_available=version_result.returncode == 0,
         adb_version=version,
         devices=devices,
@@ -152,3 +156,11 @@ def run_passive_precheck(
         wifi_name=None,
         adb_path=str(Path(resolved).expanduser().resolve()),
     )
+    return {
+        **result,
+        "commands": [[resolved, "version"], [resolved, "devices", "-l"]],
+        "execution_ok": version_result.returncode == 0 and devices_result.returncode == 0,
+        "devices_output": devices_result.stdout,
+        "devices_exit_code": devices_result.returncode,
+        "error": devices_result.stderr or version_result.stderr,
+    }

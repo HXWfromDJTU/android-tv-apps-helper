@@ -67,6 +67,22 @@ def _parser() -> argparse.ArgumentParser:
     workflow_answer.add_argument("session", type=Path)
     workflow_answer.add_argument("--question-id", required=True)
     workflow_answer.add_argument("--value", required=True)
+    workflow_answer.add_argument("--presentation-id")
+
+    native_answer = subcommands.add_parser("workflow-native-answer")
+    native_answer.add_argument("session", type=Path)
+    native_answer.add_argument("--question-id", required=True)
+    native_answer.add_argument("--presentation-id", required=True)
+    native_values = native_answer.add_mutually_exclusive_group(required=True)
+    native_values.add_argument("--value")
+    native_values.add_argument("--values-json")
+
+    resume = subcommands.add_parser("resume-native")
+    resume.add_argument("session", type=Path)
+    resume.add_argument("--question-id", required=True)
+
+    discover = subcommands.add_parser("workflow-discover")
+    discover.add_argument("session", type=Path)
 
     workflow_entry = subcommands.add_parser("workflow-entry")
     workflow_entry.add_argument("session", type=Path)
@@ -257,11 +273,19 @@ def main(arguments: Sequence[str] | None = None) -> int:
                     update_error=update_error,
                 )
             )
-        elif args.command == "workflow-answer":
+        elif args.command == "resume-native":
             store = SessionStore(args.session)
-            result = WorkflowEngine(store).submit(
-                args.value, question_id=args.question_id
-            )
+            store.resume_native(args.question_id)
+            _print_json(_interactive_payload(store, Question.from_dict(store.read()["pending_question"])))
+        elif args.command in {"workflow-answer", "workflow-native-answer"}:
+            store = SessionStore(args.session)
+            if not args.presentation_id:
+                raise AnswerError("请调用原生组件并使用本次 presentation_id；旧式编号回答已停用。")
+            values_json = getattr(args, "values_json", None)
+            value = json.loads(values_json) if values_json is not None else args.value
+            if not isinstance(value, (str, list)):
+                raise AnswerError("原生答案必须为字符串或选项数组。")
+            result = WorkflowEngine(store).submit_native(value, question_id=args.question_id, presentation_id=args.presentation_id)
             question = result.get("question")
             payload = _interactive_payload(
                 store,
@@ -272,6 +296,20 @@ def main(arguments: Sequence[str] | None = None) -> int:
             )
             _print_json(payload)
             if not result["accepted"]:
+                return 2
+        elif args.command == "workflow-discover":
+            store = SessionStore(args.session)
+            data = store.read()
+            if (data.get("pending_action") or {}).get("action_id") != "PASSIVE-DISCOVERY-ACTION":
+                raise AnswerError("必须先通过当前问题批准被动检查。")
+            fresh = run_passive_precheck(adb_path=data.get("adb_path") or (data.get("precheck") or {}).get("adb_path"))
+            ok = fresh.get("execution_ok") is True
+            evidence = {"result": "本次被动检查完成" if ok else "本次被动检查未成功", "commands": fresh.get("commands", []), "precheck": fresh}
+            if not ok:
+                evidence["error"] = fresh.get("error") or "未找到可用 ADB 或检查命令失败"
+            result = WorkflowEngine(store).record_action("PASSIVE-DISCOVERY-ACTION", status="completed" if ok else "failed", evidence=evidence)
+            _print_json(_interactive_payload(store, result.get("question"), accepted=result["accepted"], record=result.get("record")))
+            if not ok:
                 return 2
         elif args.command == "workflow-action-result":
             evidence = json.loads(args.evidence.read_text(encoding="utf-8"))
@@ -402,6 +440,12 @@ def main(arguments: Sequence[str] | None = None) -> int:
         OSError,
         json.JSONDecodeError,
     ) as error:
+        if getattr(args, "command", None) in {"workflow-native-answer", "workflow-answer"}:
+            store = SessionStore(args.session)
+            pending = store.read().get("pending_question")
+            if pending:
+                _print_json(_interactive_payload(store, Question.from_dict(pending), accepted=False, error=str(error)))
+                return 2
         print(str(error), file=sys.stderr)
         return 2
 

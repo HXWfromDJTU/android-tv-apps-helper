@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "skill_id": "android-tv-apps-helper",
-  "stable_version": "0.3.2",
-  "release_url": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.2",
+  "stable_version": "0.3.3",
+  "release_url": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.3",
   "repository": "HXWfromDJTU/android-tv-apps-helper",
   "minimum_compatible_version": "0.2.0",
-  "sha256_source": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/SHA256SUMS",
+  "sha256_source": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/SHA256SUMS",
   "platform_assets": {
-    "workbuddy": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/android-tv-apps-helper-workbuddy-v0.3.2.zip",
-    "doubao-work": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/android-tv-apps-helper-doubao-work-v0.3.2.zip",
-    "claude": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/android-tv-apps-helper-claude-v0.3.2.zip",
+    "workbuddy": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/android-tv-apps-helper-workbuddy-v0.3.3.zip",
+    "doubao-work": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/android-tv-apps-helper-doubao-work-v0.3.3.zip",
+    "claude": "https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/android-tv-apps-helper-claude-v0.3.3.zip",
     "codex": "https://github.com/HXWfromDJTU/android-tv-apps-helper"
   }
 }

@@ -104,7 +104,7 @@ class NativeInteractionTests(unittest.TestCase):
                 "safe_exit",
             )
 
-    def test_native_tool_failure_preserves_question_and_records_text_fallback(self):
+    def test_missing_native_tool_preserves_question_and_blocks(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(
                 Path(directory) / "session.json",
@@ -136,20 +136,20 @@ class NativeInteractionTests(unittest.TestCase):
 
             saved = store.read()
             presentation = build_host_presentation(question, saved)
-            self.assertEqual(saved["interaction_surface"], "text_menu")
+            self.assertEqual(saved["interaction_surface"], "structured_form")
             self.assertEqual(saved["pending_question"]["question_id"], "TOOL-Q1")
             self.assertEqual(
                 saved["interaction_capabilities"]["fallback_reason"],
                 "native_tool_not_exposed",
             )
-            self.assertEqual(presentation["mode"], "text_fallback")
+            self.assertEqual(presentation["mode"], "native_blocked")
             self.assertEqual(
-                presentation["fallback_reason"],
+                presentation["blocked_reason"],
                 "native_tool_not_exposed",
             )
-            self.assertIn("原生选择组件", presentation["rendered"])
+            self.assertIn("原生组件不可用", presentation["rendered"])
 
-    def test_codex_four_choice_question_falls_back_instead_of_calling_invalid_schema(self):
+    def test_codex_four_choice_question_uses_native_pages_with_valid_schema(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(
                 Path(directory) / "session.json",
@@ -160,8 +160,9 @@ class NativeInteractionTests(unittest.TestCase):
 
             presentation = build_host_presentation(question, store.read())
 
-            self.assertEqual(presentation["mode"], "text_fallback")
-            self.assertEqual(presentation["fallback_reason"], "question_not_native_compatible")
+            self.assertEqual(presentation["mode"], "native_required")
+            self.assertLessEqual(len(presentation["tool_input"]["questions"][0]["options"]), 3)
+            self.assertGreater(presentation["page_count"], 1)
 
     def test_codex_three_choice_question_uses_request_user_input_when_exposed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -196,7 +197,7 @@ class NativeInteractionTests(unittest.TestCase):
             self.assertEqual(presentation["answer_value_map"]["第一项（推荐）"], "one")
             self.assertNotIn("multiSelect", tool_question)
 
-    def test_call_failure_falls_back_only_for_current_question(self):
+    def test_call_failure_retries_native_and_does_not_disable_next_question(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(
                 Path(directory) / "session.json",
@@ -216,7 +217,7 @@ class NativeInteractionTests(unittest.TestCase):
             )
 
             failed_presentation = build_host_presentation(first, store.read())
-            self.assertEqual(failed_presentation["mode"], "text_fallback")
+            self.assertEqual(failed_presentation["mode"], "native_required")
             self.assertEqual(store.read()["interaction_surface"], "structured_form")
 
             store.answer("safe_exit", submitted_question_id=first.question_id)
@@ -299,22 +300,19 @@ class NativeInteractionTests(unittest.TestCase):
             self.assertEqual(saved["pending_question"]["question_id"], second.question_id)
             self.assertEqual(saved["interaction_surface"], "structured_form")
 
-    def test_incompatible_question_falls_back_for_one_turn_without_disabling_native(self):
+    def test_large_question_paginates_without_disabling_native(self):
         with tempfile.TemporaryDirectory() as directory:
             store = SessionStore.create(
                 Path(directory) / "session.json",
                 interaction_surface="auto",
                 host_platform="workbuddy",
             )
-            question = build_question("TASK", {})
+            question = build_question("DISCOVERY-NONE", {})
 
             presentation = build_host_presentation(question, store.read())
 
-            self.assertEqual(presentation["mode"], "text_fallback")
-            self.assertEqual(
-                presentation["fallback_reason"],
-                "question_not_native_compatible",
-            )
+            self.assertEqual(presentation["mode"], "native_required")
+            self.assertGreater(presentation["page_count"], 1)
             self.assertEqual(store.read()["interaction_surface"], "structured_form")
 
 

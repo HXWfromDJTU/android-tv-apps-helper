@@ -1,79 +1,46 @@
-# Interaction Contract
+# Interaction Contract — Strong Choice
 
-## Cross-platform invariants
+## Invariants
 
-Claude, Codex, WorkBuddy, and 豆包工作 use the same workflow revision, `pending_question` data, stable option values, mutation approvals, and evidence labels. Host-native controls may change presentation only. They cannot merge questions, omit options, preselect the recommendation, infer consent, or advance state without a harness-accepted answer.
+Claude, Codex, WorkBuddy and 豆包工作 share the workflow, `pending_question`, stable option values, approvals and evidence labels. Every decision uses a real host-native `structured_form` choice component. A numbered-text menu is not a supported interactive surface, even after an error.
 
-The model must render questions produced by `workflow-entry`, `workflow-answer`, and `workflow-action-result`. It must not use `set-question` to invent a prompt or next state. A pending question cannot be overwritten, and a pending action cannot advance until evidence is recorded.
+Only render questions from `workflow-entry`, `workflow-native-answer`, `workflow-discover` and `workflow-action-result`. Do not invent questions, edit session JSON, bypass with legacy `workflow-answer`, or advance without an accepted answer. A pending action waits for evidence.
 
-## Question lock
+## Required reply order
 
-Every decision creates one `pending_question` before it is rendered. It contains `question_id`, `state_id`, `kind`, `prompt`, stable options, `required: true`, `attempts`, previous result, progress, blocker, remediation guidance, evidence, table rows, and optional visual/attachment data. The harness also emits `component_prompt` (the question only) and `component_options`. Context belongs in the visible conversation immediately before the card, never appended to its title or question.
+1. Display `presentation.context_markdown` in visible conversation: table with ✅ completed, ❌ attempted but failed, ⚠️ uncertain/risky, ⏳ pending and ⏭️ unavailable/skipped, then blocker and guidance.
+2. Call `presentation.tool_name` with exact `tool_input`. The component contains only a short question and its options. Do not append context to the title.
+3. The host's normal supplemental/Other input appears after the options; never replace the choices with a request to type numbers. Do not invent an Other option or fake HTML UI.
+4. Submit the actual returned label/value through `workflow-native-answer` with the current `question_id` and `presentation_id`. For an actual multi-selection, use `--values-json '["label A","label B"]'` rather than joining display labels.
 
-Do not clear `pending_question` or enter the next state until the harness accepts the answer. On an invalid answer:
+A question is `required`. Closing a card, a preselected recommendation, an attachment, “继续”, or unrelated supplemental prose is not consent. On exit code 2, show the returned error with the context and invoke the returned native component again; do not execute later actions.
 
-1. Keep the current state.
-2. Execute no later command.
-3. Explain the invalidity in one sentence.
-4. Render the same `question_id` and options again.
-5. Wait.
+## Pagination and selection
 
-Answers such as “好的”, “继续”, “随便”, or “你决定” are invalid while a question is pending unless that exact phrase is a displayed option value. An answer to an older question is invalid.
+The harness fits every page to the platform limit: Codex 3 choices, AskUserQuestion hosts 4. `native_card_compatible` is legacy raw-count metadata, not permission to downgrade. Use the actual `presentation`.
 
-## Surface selection
+“更多选项” cycles pages. All enabled choices remain reachable; `safe_exit` stays visible on every page when present in the canonical question. Finish-routing questions retain their canonical exit instead of inventing a duplicate; never map `safe_exit` to a generic Other field. Unavailable choices are explained in the context table and cannot be submitted.
 
-Initialize with `--surface auto`; the model does not choose the surface. The harness starts with `structured_form` and emits `presentation.mode = native_required` for compatible questions:
+Compatible small multi-choice questions use native multi-select. Larger lists or single-choice-only hosts use native add/remove choices, retained selections across pages, then “完成选择”. Toggling, navigating and completing selection do not authorize downloading. The next workflow question confirms selected application names and versions; installation still requires separate approval.
 
-- `structured_form`: a supported host-native required form, single-choice card, or button surface exists.
-- `text_menu`: no supported UI exists, the UI call fails, the result cannot render, or a required submission value is missing.
+## Input after choice
 
-UI failure is recorded only after `record-surface-failure` saves `question_id`, the immutable `presentation_id`, exact `tool_name`, one of `native_tool_not_exposed`, `native_tool_call_failed`, or `native_tool_render_failed`, and non-empty observed detail. The harness rejects failures from an older question, older rendering, or different tool. A missing host tool disables native controls for the session; a call or render failure falls back only for the current question, and the next compatible question retries the native control. Preserve the question ID, options, and state. Never emit raw `<widget>`, `<choices>`, `<visual-option>`, or fake HTML buttons. Do not call another product such as ChatCut merely to borrow its UI.
+For `short_text`, first display a native “填写信息” choice alongside return/exit. Only after that choice is accepted does the harness set `accepts_free_input=true`. Invoke its native component again with return/exit choices and use the host's supplemental input field for the required prefix/value (for example `IP: …` or `ADB: …`). The input must still pass validation; invalid values keep this stage open. A host without that input field must report a rendering failure, not invent a widget or silently switch to chat input.
 
-For `structured_form`, the harness returns `tool_name`, exact `tool_input`, `context_markdown`, and `answer_value_map`. Always display `context_markdown` directly above the control in visible conversation, then call the tool with exact parameters. The serialized `native_card_compatible` field is only a coarse four-option signal; the platform adapter must also enforce the host's exact option and question-type limits before using a native card. Otherwise the harness returns a complete text fallback with `question_not_native_compatible`: never omit choices, never preselect the recommendation, and never map `safe_exit` to a generic Other field. Keep the label-to-value map when a host returns display text. Mark blocking inputs `required`. For `explicit_consent`, show the full action and impact in the preceding context and preserve the exact confirmation question/options; attachments and other fields are not consent.
+For ordinary choice questions, supplemental input may clarify the issue but cannot advance the workflow unless it exactly matches a visible option. Always present choices again.
 
-## Question types
+## Native failures
 
-- `single_choice`: exactly one number, stable value, or unambiguous full label.
-- `multi_choice`: only when declared; accept a list such as `1,3,5`.
-- `short_text`: require a visible prefix and format, such as `IP: 192.168.31.170` or `路径: /absolute/app.apk`.
-- `explicit_consent`: exact confirmation value only; never infer it from “continue”.
+`native_required` always means call the real tool, not Markdown choices. After an observed failure, call `record-surface-failure` with current question ID, presentation ID, tool name, reason and detail. No simulated calls or fabricated failures.
 
-Every blocking question includes `safe_exit` (shown as `0. 安全退出`) unless it is already a dedicated finish-routing question. `TASK-Q1` uses the explicit `finish_options` route, and `FINISH-CHOICE-Q1` uses `finish_keep`; adding generic exits to either would duplicate the same outcome. Include `back` when returning is meaningful.
+- A call/render error permits one native retry for the same question. The returned token changes; use it.
+- A second failure, or a tool not exposed by the current host mode, returns `native_blocked`: display the status table, preserve the pending question and stop operations. No numbered-text fallback.
+- After the host component is restored, `resume-native <session> --question-id <current-id>` produces a fresh native presentation. Do not repeatedly reset it to evade the retry limit.
 
-## Reply shape
+A Skill cannot create a missing host tool. This blocked condition is not successful interaction. Legacy `text_menu` initialization is accepted for checkpoint compatibility but presentation still requires native controls.
 
-Each interactive Agent reply contains, in order:
+## Approval and question lock
 
-1. A three-to-six-row Markdown status table derived from evidence.
-2. The current blocker or risk.
-3. Actionable guidance for that blocker.
-4. Exactly one question.
-5. Options with impact; mark one recommendation when useful but never preselect it.
-6. Exact accepted-answer format.
+The current presentation binds its question instance, page, selected items and tool payload. Old-page callbacks are rejected. Page navigation/input opening is UI-only, never a workflow answer or mutation approval. `explicit_consent` requires the exact confirmation option after displaying action and impact. No inferred approvals.
 
-For a native modal/card, items 1–3 are visible conversation immediately before the control: an evidence table with ✅ completed, ❌ attempted but failed, ⚠️ attention, followed by blocker/risk and guidance. The card contains only the supplied question and options (items 4–5). Do not copy context into its title/question or hide it in reasoning. Preserve action names needed for explicit approval rather than truncating a confirmation. Text fallback keeps the same table-first order in one reply.
-
-The Agent may run already authorized work until the next decision, but every new conversational turn must end with a question and options. If the user asks a side question, answer briefly and then render the still-pending question again.
-
-## Text fallback example
-
-```text
-| 状态 | 项目 | 结果 | 依据 |
-| --- | --- | --- | --- |
-| ✅ | 目标候选 | 小米电视 MiTV-ASTP0 | ADB 只读属性 |
-| ⚠️ | 用户确认 | 等待确认 | — |
-
-问题 TARGET-Q1：这是要操作的电视吗？
-
-1. 确认这台电视（推荐）——后续命令只发送到此设备
-2. 换一台——返回设备发现
-0. 安全退出——停止尚未执行的工作
-
-请明确回复：1、2 或 0。
-```
-
-## Status and selection contract
-
-The harness maps evidence to symbols: ✅ completed, ❌ attempted and incomplete after allowed recovery, ⚠️ partial/risky/user verification, ⏳ pending, and ⏭️ skipped. A successful command cannot substitute for on-site picture, sound, or remote-control confirmation.
-
-Use native multi-select when available. Text fallback accepts Chinese enumeration commas, Chinese/English commas, or whitespace and displays `1、2、3、4` as the example. Duplicate, unknown, disabled, or `0`-mixed selections are invalid. After selection, the next question lists application names and versions; confirmation starts download only, never installation.
+Until a valid answer is accepted, preserve the question and options, explain any invalidity, and render the current native component. A failure response is still a decision point with choices, not an invitation to type an unstructured answer.

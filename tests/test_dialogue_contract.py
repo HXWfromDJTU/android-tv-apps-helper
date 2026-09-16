@@ -225,7 +225,7 @@ class DialogueContractTests(unittest.TestCase):
         self.assertEqual(payload["component_options"][-1]["value"], "safe_exit")
         self.assertNotIn("unsure_wifi", {item["value"] for item in payload["component_options"]})
 
-    def test_questions_with_more_than_four_choices_require_text_fallback(self):
+    def test_legacy_raw_count_flag_does_not_describe_paginated_presentation(self):
         payload = build_question("TASK", {}).to_dict()
         self.assertGreater(len(payload["component_options"]), 4)
         self.assertFalse(payload["native_card_compatible"])

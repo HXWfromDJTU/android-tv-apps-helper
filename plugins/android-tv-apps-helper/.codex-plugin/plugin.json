@@ -1,6 +1,6 @@
 {
   "name": "android-tv-apps-helper",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "description": "Guided Android TV ADB setup, APK installation, verification, and recovery.",
   "author": {
     "name": "SwainWong",

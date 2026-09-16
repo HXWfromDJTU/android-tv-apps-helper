@@ -2,7 +2,7 @@
 
 一个面向非技术用户的 Android TV 对话式 Skill。它用固定状态机引导用户完成只读预检查、电视确认、应用选择、APK 下载与校验、安装、桌面/壁纸设置、现场验收和 ADB 安全收尾。
 
-当前版本：`v0.3.2`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
+当前版本：`v0.3.3`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
 
 ## 这个版本解决了什么
 
@@ -12,24 +12,24 @@
 | ✅ | 不允许模糊回答 | “继续”“好的”“你决定”不会推进；仍显示原问题和原选项 |
 | ✅ | 自动预检查 | 首题前执行 `adb version` 与 `adb devices -l` 等被动只读检查，不扫描局域网、不连接未知地址 |
 | ✅ | 操作证据门禁 | 下载、安装、连接、诊断、Home、壁纸和退出复核都必须提交真实证据后才进入结果状态 |
-| ✅ | 应用多选与二次确认 | 支持原生多选；文字模式可回复 `1、2`，随后用应用名称和版本再次确认 |
+| ✅ | 应用多选与二次确认 | 原生多选或分页面点击添加/取消，完成选择后按应用名称和版本再次确认 |
 | ✅ | 壁纸与 Home 风险 | 显示已检查到的电视型号；未匹配成功证据时高亮提示大概率失败或被系统恢复 |
 | ✅ | 表格化结果 | 每轮和最终结果使用 Markdown 表格；✅ 已完成，❌ 尝试后仍失败 |
 | ✅ | 安全收尾 | 最后提醒关闭 ADB/无线调试和开发者模式，并显示匹配型号或通用关闭步骤 |
-| ✅ | 原生选择组件优先 | 兼容题目必须调用宿主原生选择工具；只有记录真实失败或题型不兼容后才能显示文字菜单 |
+| ✅ | 强制原生选择 | 每个决策调用原生工具；选项过多时分页，填写信息先选择入口；不再降级为编号文字菜单 |
 
 ## 安装包
 
-验收边界：本版针对“上下文表格 + 简短原生问题”进行四平台自动化回归及打包校验；未宣称本版客户端界面实测通过，交由用户新建会话验证。原生组件优先策略不回滚；超出宿主选项上限或不支持的题型仍明确提示后显示完整文字选项。详见[测试报告](docs/platform-validation.md)。
+验收边界：本版修复多轮强选择、原生分页、填写入口和被动发现结果回写；自动化与真实客户端 UI 验收分别记录。宿主工具未提供或重试仍失败时暂停并保留问题，不再要求用户输入编号。Skill 无法凭空生成宿主缺失的组件。详见[测试报告](docs/platform-validation.md)。
 
 | 平台 | 安装包 |
 |---|---|
-| WorkBuddy | `android-tv-apps-helper-workbuddy-v0.3.2.zip` |
-| 豆包工作 | `android-tv-apps-helper-doubao-work-v0.3.2.zip` |
-| Claude Desktop / Code | `android-tv-apps-helper-claude-v0.3.2.zip` |
-| Codex | `android-tv-apps-helper-codex-v0.3.2.zip`，或本仓库 repository plugin |
+| WorkBuddy | `android-tv-apps-helper-workbuddy-v0.3.3.zip` |
+| 豆包工作 | `android-tv-apps-helper-doubao-work-v0.3.3.zip` |
+| Claude Desktop / Code | `android-tv-apps-helper-claude-v0.3.3.zip` |
+| Codex | `android-tv-apps-helper-codex-v0.3.3.zip`，或本仓库 repository plugin |
 
-所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.2 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.2)。安装前可用：
+所有 ZIP 和 `SHA256SUMS` 位于 [v0.3.3 Release](https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/tag/v0.3.3)。安装前可用：
 
 ```sh
 (cd 下载目录 && shasum -a 256 -c SHA256SUMS)
@@ -56,7 +56,7 @@
 请安装 Android TV Apps Helper Skill。
 
 Skill 安装包：
-https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/android-tv-apps-helper-workbuddy-v0.3.2.zip
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/android-tv-apps-helper-workbuddy-v0.3.3.zip
 
 安装完成后，请告诉我技能名称和版本；先不要连接或修改电视。
 ```
@@ -67,7 +67,7 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/a
 请只删除当前已安装的 Android TV Apps Helper Skill，不要删除其他 Skill。删除后告诉我结果。
 ```
 
-删除确认后，立即发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.2`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个已校验 WorkBuddy ZIP。
+删除确认后，立即发送上面的安装提示词。只有在技能列表能看到 `Android TV Apps Helper` 且版本为 `0.3.3`，才算安装完成。若当前 Agent 只下载 ZIP 而没有安装，进入“专家·技能·连接器 → 技能 → 添加技能 → 上传技能”，上传同一个已校验 WorkBuddy ZIP。
 
 ### 2. 开始使用
 
@@ -83,7 +83,7 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/a
 请安装 Android TV Apps Helper Skill。
 
 Skill 安装包：
-https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/android-tv-apps-helper-doubao-work-v0.3.2.zip
+https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.3/android-tv-apps-helper-doubao-work-v0.3.3.zip
 
 安装完成后，请告诉我技能名称和版本；先不要连接或修改电视。
 ```
@@ -100,7 +100,7 @@ https://github.com/HXWfromDJTU/android-tv-apps-helper/releases/download/v0.3.2/a
 
 ### 1. 从 GitHub 获取 repository plugin
 
-可让 Codex 从 Release 的 `android-tv-apps-helper-codex-v0.3.2.zip` 安装个人 Skill；开发者也可使用完整 repository plugin：
+可让 Codex 从 Release 的 `android-tv-apps-helper-codex-v0.3.3.zip` 安装个人 Skill；开发者也可使用完整 repository plugin：
 
 ```sh
 git clone https://github.com/HXWfromDJTU/android-tv-apps-helper.git
@@ -126,11 +126,11 @@ cd android-tv-apps-helper
 ## 对话规则
 
 1. 每轮先展示 3–6 行重要结果表，再给阻塞/风险、解决步骤、一个问题和互斥选项。
-2. 兼容题目必须先调用原生必答单选/多选工具；只有宿主未暴露工具、调用/渲染失败或题型超限时才使用编号文字菜单，并在结果表写明降级原因。
-3. 单选必须明确回复编号、稳定值或完整选项名。多选可用 `1、2`、`1,2` 或空格分隔。
+2. 每个决策必须调用原生选择组件。超出上限使用“更多选项”分页；不会因 5 个选项而改用文字菜单。
+3. 先给选择项，组件末尾保留宿主自带补充输入。IP／路径先点“填写信息”，再使用补充输入框；补充说明和默认选中都不等于批准。多选超限时使用点击添加/取消与完成选择。
 4. 模糊、重复、越界、已禁用或旧问题的回答不会推进状态。
-5. 问题组件无法容纳 Markdown 表格时，表格紧贴组件上方，同时把最关键阻塞再写入组件。
-6. `0` 始终代表停止尚未执行的工作；使用过 ADB 后仍要进入安全收尾。
+5. 表格和处理指引固定放在组件前的可见对话中，组件只保留简短问题和选项。调用失败原生重试一次；工具缺失或再次失败则暂停，禁止静默文字降级。
+6. 原问题有“安全退出”时，每页都保留它；翻页不批准操作，使用过 ADB 后仍进入安全收尾。客户端恢复后可继续当前问题。
 
 ## 完整状态流转
 
@@ -173,7 +173,7 @@ flowchart TD
     T -- 确认 --> I[只读盘点系统/ABI/空间/Home/应用<br/>匹配型号指引和兼容性]
     I -- 有证据 --> M[TASK-Q1]
     M -- 查看并选择推荐应用 --> AP[APPS-Q1<br/>用途/版本/已安装/可用性]
-    AP -- 原生多选或 1、2 --> DC[DOWNLOAD-CONFIRM-Q1<br/>按名称和版本二次确认]
+    AP -- 原生多选或分页面点选 --> DC[DOWNLOAD-CONFIRM-Q1<br/>按名称和版本二次确认]
     DC -- 确认下载 --> DA[下载+来源+SHA-256+包体身份校验]
     DA -- 失败 --> DC
     DA -- 通过 --> DV[DOWNLOAD-VERIFY-Q1]

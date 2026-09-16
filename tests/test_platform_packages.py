@@ -45,13 +45,19 @@ SHARED_CORE = {
 
 
 class PlatformPackageTests(unittest.TestCase):
+    def test_repository_plugin_and_skill_package_versions_match(self):
+        root = REPO_ROOT / "plugins" / "android-tv-apps-helper"
+        skill_version = json.loads((root / "plugin.json").read_text())["version"]
+        plugin_version = json.loads((root / ".codex-plugin" / "plugin.json").read_text())["version"]
+        self.assertEqual(plugin_version, skill_version)
+
     def test_each_platform_package_runs_the_same_harness_and_core(self):
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
             hashes_by_platform: dict[str, dict[str, str]] = {}
 
             for platform in PLATFORMS:
-                output = temp / f"android-tv-apps-helper-{platform}-v0.3.2.zip"
+                output = temp / f"android-tv-apps-helper-{platform}-v0.3.3.zip"
                 result = subprocess.run(
                     [
                         sys.executable,
@@ -69,7 +75,7 @@ class PlatformPackageTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 metadata = json.loads(result.stdout)
                 self.assertEqual(metadata["platform"], platform)
-                self.assertEqual(metadata["version"], "0.3.2")
+                self.assertEqual(metadata["version"], "0.3.3")
 
                 with zipfile.ZipFile(output) as archive:
                     names = set(archive.namelist())
@@ -87,7 +93,7 @@ class PlatformPackageTests(unittest.TestCase):
 
                     skill = archive.read(ROOT + "SKILL.md").decode("utf-8")
                     self.assertIn("name: android-tv-apps-helper", skill)
-                    self.assertIn("version: 0.3.2", skill)
+                    self.assertIn("version: 0.3.3", skill)
                     frontmatter = skill.split("---", 2)[1]
                     top_level_keys = {
                         line.split(":", 1)[0]
@@ -137,6 +143,30 @@ class PlatformPackageTests(unittest.TestCase):
                 self.assertEqual(initialized["current_state"], "S0")
                 self.assertEqual(initialized["host_platform"], platform)
 
+                # Exercise the user-reported second-round failure on the extracted ZIP.
+                precheck = temp / platform / "precheck.json"
+                precheck.write_text(json.dumps({"devices": [], "rows": [{"status": "attention", "item": "被动发现", "result": "0 台"}]}), encoding="utf-8")
+                def invoke(*args):
+                    completed = subprocess.run([sys.executable, str(helper), *args], capture_output=True, text=True, check=False)
+                    self.assertIn(completed.returncode, (0, 2), completed.stderr)
+                    return json.loads(completed.stdout)
+                response = invoke("workflow-start", str(session), "--precheck", str(precheck))
+                for choice in ("same_wifi", "adb_enabled"):
+                    view = response["presentation"]
+                    self.assertEqual(view["mode"], "native_required")
+                    response = invoke("workflow-native-answer", str(session), "--question-id", view["question_id"], "--presentation-id", view["presentation_id"], "--value", choice)
+                self.assertEqual(response["action_required"]["action_id"], "PASSIVE-DISCOVERY-ACTION")
+                evidence = temp / platform / "failed.json"
+                evidence.write_text(json.dumps({"result": "本次检查失败", "error": "fixture: no adb"}), encoding="utf-8")
+                response = invoke("workflow-action-result", str(session), "--action-id", "PASSIVE-DISCOVERY-ACTION", "--status", "failed", "--evidence", str(evidence))
+                view = response["presentation"]
+                self.assertEqual(view["mode"], "native_required")
+                self.assertGreater(view["page_count"], 1)
+                self.assertIn("未知", view["context_markdown"])
+                response = invoke("workflow-native-answer", str(session), "--question-id", view["question_id"], "--presentation-id", view["presentation_id"], "--value", "ui:next")
+                self.assertEqual(response["presentation"]["mode"], "native_required")
+                self.assertIsNone(response["action_required"])
+
             first = hashes_by_platform[PLATFORMS[0]]
             for platform in PLATFORMS[1:]:
                 self.assertEqual(hashes_by_platform[platform], first)
@@ -179,7 +209,7 @@ class PlatformPackageTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             metadata = json.loads(result.stdout)
-            self.assertEqual(metadata["version"], "0.3.2")
+            self.assertEqual(metadata["version"], "0.3.3")
             self.assertEqual(len(metadata["artifacts"]), 4)
             lines = (output_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(lines), 4)
