@@ -25,6 +25,7 @@ ACTION_LABELS = {
     "DOWNLOAD-ACTION": "应用下载与包体验证",
     "INSTALL-ACTION": "应用安装",
     "HOME-ACTION": "Home 键默认桌面",
+    "RESTORE-HOME-ACTION": "恢复会话开始时的桌面",
     "WALLPAPER-ACTION": "电视壁纸",
     "FINISH-CHECK": "ADB 关闭复核",
 }

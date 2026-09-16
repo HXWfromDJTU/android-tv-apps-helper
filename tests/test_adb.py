@@ -68,6 +68,42 @@ class AdbTests(unittest.TestCase):
         with self.assertRaisesRegex(AdbError, "device"):
             runner.install("192.168.31.170:5555", Path("app.apk"), state="unauthorized")
 
+    def test_inspection_records_session_start_home_with_a_serial_bound_resolve_query(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "args.log"
+            adb = root / "adb"
+            adb.write_text(
+                "#!/bin/sh\n"
+                "printf '%s ' \"$@\" >> \"$ADB_TEST_LOG\"\n"
+                "printf '\\n' >> \"$ADB_TEST_LOG\"\n"
+                "case \"$*\" in\n"
+                "  *resolve-activity*) printf 'com.vendor.home/.HomeActivity\\n' ;;\n"
+                "  *ro.product.manufacturer*) printf 'Example\\n' ;;\n"
+                "  *ro.product.model*) printf 'TV-1\\n' ;;\n"
+                "  *ro.build.version.release*) printf '9\\n' ;;\n"
+                "  *ro.build.version.sdk*) printf '28\\n' ;;\n"
+                "  *ro.product.cpu.abi*) printf 'armeabi-v7a\\n' ;;\n"
+                "  *) printf 'Example\\n' ;;\n"
+                "esac\n",
+                encoding="utf-8",
+            )
+            adb.chmod(adb.stat().st_mode | stat.S_IXUSR)
+            old = os.environ.get("ADB_TEST_LOG")
+            os.environ["ADB_TEST_LOG"] = str(log)
+            try:
+                result = AdbRunner(adb).inspect_device("tv:5555", state="device")
+            finally:
+                if old is None:
+                    os.environ.pop("ADB_TEST_LOG", None)
+                else:
+                    os.environ["ADB_TEST_LOG"] = old
+            self.assertEqual(result["current_home"], "com.vendor.home/.HomeActivity")
+            self.assertIn(
+                "-s tv:5555 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME",
+                log.read_text(encoding="utf-8"),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,7 +38,7 @@ For `structured_form`, use stable option values with localized labels and descri
 - `short_text`: require a visible prefix and format, such as `IP: 192.168.31.170` or `路径: /absolute/app.apk`.
 - `explicit_consent`: exact confirmation value only; never infer it from “continue”.
 
-Every question includes `safe_exit` (shown as `0. 安全退出`). Include `back` when returning is meaningful.
+Every blocking question includes `safe_exit` (shown as `0. 安全退出`) unless it is already a dedicated finish-routing question. `TASK-Q1` uses the explicit `finish_options` route, and `FINISH-CHOICE-Q1` uses `finish_keep`; adding generic exits to either would duplicate the same outcome. Include `back` when returning is meaningful.
 
 ## Reply shape
 

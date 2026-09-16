@@ -39,7 +39,7 @@ Do not add downgrade flags, uninstall an existing signature, clear data, or disa
 
 ## Launcher safety
 
-Record the original HOME package and recovery command before changes. Install and launch the replacement first. Require the user to confirm the launcher renders, Home works, and the remote can navigate. Only then offer default-launcher or component-disable actions as separate choices. Never uninstall the original system launcher.
+Record the session-start HOME component as `device_identity.current_home` and the recovery command during the initial read-only inspection, before any change. Do not label it “factory” or “OEM” unless separate evidence proves that identity. Install and launch the replacement first. Require the user to confirm the launcher renders, Home works, and the remote can navigate. Only then offer default-launcher changes. “Restore the session-start launcher and finish” is a separate confirmation and evidence-gated action bound to that exact HOME value; if it was not recorded, automatic restore stays disabled. Never uninstall, disable, or clear data for the session-start launcher.
 
 If no verified automatic Home/wallpaper operation exists for the detected system, offer the matched manual remote-control path. Do not guess shell commands or UI coordinates. Wallpaper and Home-key evidence remain separate.
 

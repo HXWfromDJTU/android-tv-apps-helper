@@ -2,6 +2,7 @@
   "schema_version": 1,
   "skill": "android-tv-apps-helper",
   "version": "0.3.0",
+  "validated_at": "2026-09-16",
   "core_contract": {
     "states": "S0-S11",
     "question_lock": "pending_question",
@@ -18,24 +19,35 @@
     "codex": {
       "distribution": "android-tv-apps-helper-codex-v0.3.0.zip or repository_plugin",
       "artifact_validation": "passed",
-      "live_installation": "pending",
-      "live_invocation": "pending",
-      "dialogue_contract": "pending"
+      "live_installation": "passed_personal_skill_directory",
+      "live_invocation": "passed_codex_cli_0.154.0",
+      "dialogue_contract": "passed_table_first_and_invalid_answer_lock",
+      "safe_exit": "passed_live_text_menu_zero",
+      "deeper_live_flow": "not_run",
+      "desktop_gui": "not_automatable_by_computer_use_policy",
+      "physical_tv": "not_run"
     },
     "workbuddy": {
       "distribution": "android-tv-apps-helper-workbuddy-v0.3.0.zip",
       "artifact_validation": "passed",
-      "live_installation": "pending",
-      "live_invocation": "pending",
-      "dialogue_contract": "pending"
+      "live_installation": "passed_hash_verified_local_fallback",
+      "live_invocation": "passed_new_task",
+      "dialogue_contract": "passed_native_card_and_invalid_answer_lock",
+      "safe_exit": "passed_live_native_stable_value_visual_row_4",
+      "deeper_live_flow": "not_run",
+      "direct_rc4_github_install": "blocked_502_connect_tunnel",
+      "physical_tv": "not_run"
     },
     "doubao-work": {
       "distribution": "android-tv-apps-helper-doubao-work-v0.3.0.zip",
       "required_execution_context": "local_computer",
       "artifact_validation": "passed",
-      "live_installation": "pending",
-      "live_invocation": "pending",
-      "dialogue_contract": "pending"
+      "live_installation": "passed_gui_upload_and_security_detection",
+      "live_invocation": "passed_new_local_computer_task",
+      "dialogue_contract": "passed_table_first_and_invalid_answer_lock",
+      "safe_exit": "passed_live_text_fallback_zero",
+      "deeper_live_flow": "not_run",
+      "physical_tv": "not_run"
     },
     "claude": {
       "distribution": "android-tv-apps-helper-claude-v0.3.0.zip",
@@ -43,6 +55,9 @@
       "live_installation": "not_run",
       "live_invocation": "not_run",
       "dialogue_contract": "not_run",
+      "safe_exit": "not_run",
+      "deeper_live_flow": "not_run",
+      "physical_tv": "not_run",
       "note": "Live validation deferred by the user for v0.3.0."
     }
   }

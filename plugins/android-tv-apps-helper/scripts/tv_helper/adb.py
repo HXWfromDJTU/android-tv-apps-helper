@@ -96,10 +96,24 @@ class AdbRunner:
             "sdk": "ro.build.version.sdk",
             "abi": "ro.product.cpu.abi",
         }
-        return {
+        identity = {
             key: self.shell(serial, ["getprop", prop])
             for key, prop in properties.items()
         }
+        identity["current_home"] = self.shell(
+            serial,
+            [
+                "cmd",
+                "package",
+                "resolve-activity",
+                "--brief",
+                "-a",
+                "android.intent.action.MAIN",
+                "-c",
+                "android.intent.category.HOME",
+            ],
+        )
+        return identity
 
     def install(self, serial: str, apk_path: Path, *, state: str) -> str:
         self._require_authorized(state)

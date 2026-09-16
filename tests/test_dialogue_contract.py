@@ -134,12 +134,75 @@ class DialogueContractTests(unittest.TestCase):
         self.assertIn("第 3 次", rendered)
 
     def test_task_menu_uses_fixed_plain_language_labels(self):
-        labels = [option.label for option in build_question("TASK", {}).options]
+        question = build_question("TASK", {})
+        labels = [option.label for option in question.options]
         self.assertIn("查看并选择推荐应用", labels)
         self.assertIn("设置电视默认桌面", labels)
         self.assertNotIn("推荐配置", labels)
         self.assertNotIn("电视清理", labels)
+        self.assertIn("进入任务收尾", labels)
+        self.assertEqual(labels.count("结束本次任务，保留当前桌面和壁纸"), 0)
         self.assertEqual(len(labels), len(set(labels)))
+        finish = next(option for option in question.options if option.value == "finish_options")
+        self.assertEqual(finish.next_state, "FINISH-CHOICE")
+
+    def test_workflow_start_persists_prechecked_adb_path_for_later_evidence_binding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(Path(directory) / "session.json", interaction_surface="text_menu")
+            WorkflowEngine(store).start({"rows": [], "devices": [], "adb_path": "/trusted/adb"})
+            self.assertEqual(store.read()["adb_path"], "/trusted/adb")
+
+    def test_finish_choice_restores_session_start_home_only_after_separate_approval_and_evidence(self):
+        context = {
+            "target_serial": "tv:5555",
+            "device_identity": {
+                "model": "TV-1",
+                "current_home": "com.vendor.home/.HomeActivity",
+            },
+        }
+        choice = build_question("FINISH-CHOICE", context)
+        self.assertEqual(
+            [option.label for option in choice.options],
+            [
+                "结束本次任务，保留当前桌面和壁纸",
+                "继续其他电视操作",
+                "恢复本次会话开始时的桌面后结束",
+            ],
+        )
+        rendered_choice = render_question(choice)
+        self.assertIn("1. 结束本次任务，保留当前桌面和壁纸", rendered_choice)
+        self.assertIn("2. 继续其他电视操作", rendered_choice)
+        self.assertIn("3. 恢复本次会话开始时的桌面后结束", rendered_choice)
+        self.assertNotIn("0. 结束本次任务", rendered_choice)
+        self.assertNotIn("原厂", rendered_choice)
+        with tempfile.TemporaryDirectory() as directory:
+            store = SessionStore.create(Path(directory) / "session.json", interaction_surface="text_menu")
+            store.update_fields(target_serial="tv:5555", device_identity=context["device_identity"])
+            store.set_question(choice)
+            engine = WorkflowEngine(store)
+            result = engine.submit("3", question_id="FINISH-CHOICE-Q1")
+            self.assertEqual(result["question"].question_id, "RESTORE-HOME-CONFIRM-Q1")
+            result = engine.submit("1", question_id="RESTORE-HOME-CONFIRM-Q1")
+            self.assertEqual(result["action_required"]["action_id"], "RESTORE-HOME-ACTION")
+            self.assertEqual(
+                result["action_required"]["expected_initial_home"],
+                "com.vendor.home/.HomeActivity",
+            )
+            result = engine.record_action(
+                "RESTORE-HOME-ACTION",
+                status="completed",
+                evidence={
+                    "result": "已恢复会话开始时的桌面",
+                    "target_serial": "tv:5555",
+                    "before_home": "com.oversea.aslauncher/.MainActivity",
+                    "after_home": "com.vendor.home/.HomeActivity",
+                    "verification_command": ["adb", "-s", "tv:5555", "shell", "cmd", "package", "resolve-activity", "--brief", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.HOME"],
+                    "exit_code": 0,
+                    "initial_launcher_enabled": True,
+                    "initial_launcher_data_preserved": True,
+                },
+            )
+            self.assertEqual(result["question"].question_id, "FINISH-SAFETY-Q1")
 
     def test_safe_exit_is_displayed_and_accepted_as_zero(self):
         question = build_question("PRECHECK_WIFI", {"precheck": {"rows": []}})
@@ -397,6 +460,7 @@ class DialogueContractTests(unittest.TestCase):
                         "android_version": "9",
                         "sdk": "28",
                         "abi": "armeabi-v7a",
+                        "current_home": "com.vendor.home/.HomeActivity",
                     },
                     "installed_apps": {},
                 },

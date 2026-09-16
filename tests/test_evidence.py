@@ -41,6 +41,59 @@ class ActionEvidenceTests(unittest.TestCase):
                 )
             self.assertNotEqual(store.read()["current_state"], "END")
 
+    def test_device_inspection_requires_session_start_home_for_safe_recovery(self):
+        with self.assertRaisesRegex(ValueError, "current_home"):
+            validate_action_evidence(
+                "INSPECT-ACTION",
+                status="completed",
+                pending={"target_serial": "tv:5555"},
+                evidence={
+                    "result": "只读盘点完成",
+                    "target_serial": "tv:5555",
+                    "commands": [["adb", "-s", "tv:5555", "shell", "getprop"]],
+                    "exit_code": 0,
+                    "device_identity": {
+                        "manufacturer": "Example",
+                        "model": "TV-1",
+                        "android_version": "9",
+                        "sdk": "28",
+                        "abi": "armeabi-v7a",
+                    },
+                    "installed_apps": {},
+                },
+            )
+
+    def test_restore_home_rejects_substring_identity_and_non_adb_verification(self):
+        pending = {
+            "target_serial": "tv:5555",
+            "expected_initial_home": "com.vendor.home/.HomeActivity",
+        }
+        valid_command = ["adb", "-s", "tv:5555", "shell", "cmd", "package", "resolve-activity", "--brief", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.HOME"]
+        base = {
+            "result": "ok",
+            "target_serial": "tv:5555",
+            "before_home": "com.oversea.aslauncher/.MainActivity",
+            "after_home": "com.vendor.home/.HomeActivity",
+            "verification_command": valid_command,
+            "exit_code": 0,
+            "initial_launcher_enabled": True,
+            "initial_launcher_data_preserved": True,
+        }
+        invalid_cases = (
+            ({**base, "after_home": "evil.prefix com.vendor.home/.HomeActivity suffix"}, "HOME"),
+            ({**base, "verification_command": ["echo", "ok"]}, "验证命令"),
+            ({**base, "verification_command": ["badadb", *valid_command[1:]]}, "验证命令"),
+            ({**base, "verification_command": ["/tmp/adb", *valid_command[1:]]}, "ADB 路径"),
+        )
+        for evidence, message in invalid_cases:
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                validate_action_evidence(
+                    "RESTORE-HOME-ACTION",
+                    status="completed",
+                    pending={**pending, "adb_path": "/trusted/platform-tools/adb"} if message == "ADB 路径" else pending,
+                    evidence=evidence,
+                )
+
     def test_completed_evidence_is_bound_to_the_approved_object(self):
         cases = [
             (
@@ -67,6 +120,11 @@ class ActionEvidenceTests(unittest.TestCase):
                 "HOME-ACTION",
                 {"target_serial": "tv:5555", "expected_home_package": "com.oversea.aslauncher", "selected_actions": ["home_key"], "emotn_runtime": {"verified": True, "package": "com.oversea.aslauncher"}},
                 {"result": "ok", "target_serial": "tv:5555", "before_home": "vendor.home", "after_home": "evil.launcher", "verification_command": ["adb"], "exit_code": 0},
+            ),
+            (
+                "RESTORE-HOME-ACTION",
+                {"target_serial": "tv:5555", "expected_initial_home": "com.vendor.home/.HomeActivity"},
+                {"result": "ok", "target_serial": "tv:5555", "before_home": "com.oversea.aslauncher/.MainActivity", "after_home": "evil.launcher/.Home", "verification_command": ["adb"], "exit_code": 0, "initial_launcher_enabled": True, "initial_launcher_data_preserved": True},
             ),
             (
                 "UPDATE-ACTION",

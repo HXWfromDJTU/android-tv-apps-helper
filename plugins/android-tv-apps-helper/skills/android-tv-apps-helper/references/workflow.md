@@ -34,7 +34,7 @@ Read Android version, SDK, ABI, free space, current Home activity, installed pac
 - 检查当贝市场官方来源
 - 设置电视默认桌面
 - 检查应用问题
-- 结束本次任务，保留当前桌面和壁纸
+- 进入任务收尾
 
 Selecting a task performs no mutation.
 
@@ -73,9 +73,9 @@ Final task choices are:
 
 - 结束本次任务，保留当前桌面和壁纸
 - 继续其他电视操作
-- 恢复原厂默认桌面后结束
+- 恢复本次会话开始时的桌面后结束
 
-Restoring the factory launcher is a new plan and approval. Every completion, cancellation, and safe exit after ADB use routes to `FINISH-SAFETY-Q1` after artifacts are saved.
+Restoring the session-start launcher is a new plan and approval. The recorded HOME must not be described as factory/OEM without separate evidence. Every completion, cancellation, and safe exit after ADB use routes to `FINISH-SAFETY-Q1` after artifacts are saved.
 
 Match the shutdown guide in exact model/system, model family, vendor system, then generic order. Show the target, ADB/developer state, steps, and one question: both closed; show model guide; or keep enabled and finish with warning. The Agent does not silently disable developer mode. Disconnection is not proof; conflicting ADB reachability keeps the same question.
 

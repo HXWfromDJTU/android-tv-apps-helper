@@ -7,6 +7,6 @@
     "diagnose_app": "检查应用问题",
     "finish_keep": "结束本次任务，保留当前桌面和壁纸",
     "continue_tasks": "继续其他电视操作",
-    "restore_factory_launcher": "恢复原厂默认桌面后结束"
+    "restore_session_start_launcher": "恢复本次会话开始时的桌面后结束"
   }
 }

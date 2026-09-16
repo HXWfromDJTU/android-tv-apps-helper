@@ -51,6 +51,8 @@ WORKFLOW_STATES = {
     "WALLPAPER",
     "WALLPAPER-UPLOAD",
     "WALLPAPER-CONFIRM",
+    "FINISH-CHOICE",
+    "RESTORE-HOME-CONFIRM",
     "FINISH-SAFETY",
 }
 ACTION_STATES = {
@@ -68,6 +70,7 @@ ACTION_STATES = {
     "PREPARE-INSTALL-PLAN-ACTION",
     "INSTALL-ACTION",
     "HOME-ACTION",
+    "RESTORE-HOME-ACTION",
     "WALLPAPER-ACTION",
     "FINISH-CHECK",
 }
@@ -388,10 +391,11 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
                     unavailable_reason="未验证 Emotn UI 已安装；请先完成应用安装流程。",
                 ),
                 Option("diagnose_app", "检查应用问题", "DIAGNOSE", "排查启动、画面、声音或遥控问题"),
-                _safe_exit(
-                    "FINISH-SAFETY",
-                    label="结束本次任务，保留当前桌面和壁纸",
-                    description="保存报告并进入安全收尾",
+                Option(
+                    "finish_options",
+                    "进入任务收尾",
+                    "FINISH-CHOICE",
+                    "选择保留现状、继续操作或恢复会话开始时的桌面",
                 ),
             ),
             previous_result_summary="已完成目标电视确认和只读盘点。",
@@ -748,6 +752,73 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
                 {"status": "attention", "item": "持久性", "result": "可能被厂商系统重置"},
             ),
         )
+    if state == "FINISH-CHOICE":
+        identity = context.get("device_identity") or {}
+        initial_home = str(identity.get("current_home") or "")
+        can_restore = bool(initial_home and EMOTN_PACKAGE not in initial_home)
+        return Question(
+            question_id="FINISH-CHOICE-Q1",
+            state_id=state,
+            kind="single_choice",
+            prompt="本次任务准备如何收尾？",
+            options=(
+                Option(
+                    "finish_keep",
+                    "结束本次任务，保留当前桌面和壁纸",
+                    "FINISH-SAFETY",
+                    "不再修改桌面，进入 ADB 与开发者模式安全收尾",
+                ),
+                Option("continue_tasks", "继续其他电视操作", "TASK", "返回清晰的任务选择"),
+                Option(
+                    "restore_initial_home",
+                    "恢复本次会话开始时的桌面后结束",
+                    "RESTORE-HOME-CONFIRM",
+                    "单独确认恢复只读盘点记录的 HOME；不卸载、不禁用、不清除数据",
+                    enabled=can_restore,
+                    unavailable_reason="只读盘点未记录可信的会话开始 HOME，不能自动恢复。",
+                ),
+            ),
+            previous_result_summary="当前任务步骤已完成或停止，尚未改变收尾选择。",
+            blocker_summary="恢复会话开始时的桌面是一次新的电视修改，必须单独批准并验证结果。",
+            summary_rows=(
+                {"status": "completed" if can_restore else "attention", "item": "会话开始 HOME", "result": initial_home or "未记录"},
+                {"status": "pending", "item": "收尾方式", "result": "等待明确选择"},
+            ),
+        )
+    if state == "RESTORE-HOME-CONFIRM":
+        identity = context.get("device_identity") or {}
+        initial_home = str(identity.get("current_home") or "")
+        can_restore = bool(initial_home and EMOTN_PACKAGE not in initial_home)
+        return Question(
+            question_id="RESTORE-HOME-CONFIRM-Q1",
+            state_id=state,
+            kind="explicit_consent",
+            prompt="是否批准把 Home 键恢复到本次会话开始时记录的桌面？",
+            options=(
+                Option(
+                    "approve_restore_home",
+                    "批准恢复会话开始时的桌面",
+                    "RESTORE-HOME-ACTION",
+                    "只恢复 HOME 指向；保留 Emotn、原桌面和双方数据",
+                    True,
+                    enabled=can_restore,
+                    unavailable_reason="没有可信的会话开始 HOME 记录，不能执行恢复。",
+                ),
+                Option("back", "返回收尾选择", "FINISH-CHOICE"),
+                _safe_exit(
+                    "FINISH-SAFETY",
+                    label="结束并保留当前桌面",
+                    description="放弃恢复，直接进入安全收尾",
+                ),
+            ),
+            previous_result_summary="已读取本次会话开始时记录的 HOME。",
+            blocker_summary="恢复必须绑定会话开始 HOME 和当前目标电视；任何变化都会使批准失效。",
+            remediation_guidance=("不会卸载、禁用或清除会话开始时的桌面与 Emotn UI。",),
+            summary_rows=(
+                {"status": "completed" if can_restore else "attention", "item": "恢复目标", "result": initial_home or "未记录"},
+                {"status": "pending", "item": "电视修改", "result": "等待独立批准"},
+            ),
+        )
     if state == "FINISH-SAFETY":
         guide = context.get("device_guide_match") or {}
         identity = context.get("device_identity") or {}
@@ -842,7 +913,11 @@ class WorkflowEngine:
         self.store = store
 
     def start(self, precheck: dict[str, Any]) -> Question:
-        self.store.update_fields(precheck=precheck, current_state="PRECHECK_WIFI")
+        self.store.update_fields(
+            precheck=precheck,
+            current_state="PRECHECK_WIFI",
+            adb_path=precheck.get("adb_path"),
+        )
         question = build_question("PRECHECK_WIFI", {"precheck": precheck})
         self.store.set_question(question)
         return question
@@ -1029,6 +1104,11 @@ class WorkflowEngine:
                 runtime = next_context.get("emotn_runtime") or {}
                 if runtime.get("verified") is not True or runtime.get("package") != EMOTN_PACKAGE:
                     raise ValueError("尚未验证 Emotn UI 位于前台，不能修改 Home 键或壁纸。")
+            if proposed.next_state == "RESTORE-HOME-ACTION":
+                initial_home = str((next_context.get("device_identity") or {}).get("current_home") or "")
+                if not initial_home or EMOTN_PACKAGE in initial_home:
+                    raise ValueError("没有可信的会话开始 HOME 记录，不能自动恢复。")
+                action_bindings["expected_initial_home"] = initial_home
         except ValueError as error:
             updated = Question(
                 **{
@@ -1050,6 +1130,7 @@ class WorkflowEngine:
             "INSTALL-ACTION",
             "DIAGNOSE-ACTION",
             "HOME-ACTION",
+            "RESTORE-HOME-ACTION",
             "WALLPAPER-ACTION",
             "FINISH-CHECK",
         }
@@ -1188,6 +1269,7 @@ class WorkflowEngine:
                 "PREPARE-INSTALL-PLAN-ACTION": "DOWNLOAD-VERIFY",
                 "INSTALL-ACTION": "INSTALL-PLAN",
                 "HOME-ACTION": "HOME-CONFIRM",
+                "RESTORE-HOME-ACTION": "RESTORE-HOME-CONFIRM",
                 "WALLPAPER-ACTION": "WALLPAPER-CONFIRM",
             }.get(action_id)
             if retry_state is None:
@@ -1322,6 +1404,11 @@ class WorkflowEngine:
             next_state = "WALLPAPER" if "wallpaper" in selected else "VERIFY"
             context["evidence_rows"] = (
                 {"status": row_status, "item": "Home 键修改", "result": result},
+            )
+        elif action_id == "RESTORE-HOME-ACTION":
+            next_state = "FINISH-SAFETY"
+            context["summary_rows"] = (
+                {"status": row_status, "item": "会话开始时的桌面", "result": result},
             )
         elif action_id == "WALLPAPER-ACTION":
             next_state = "VERIFY"

@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from tv_helper.precheck import classify_discovered_device, make_precheck_result, run_passive_precheck
 
@@ -27,6 +28,7 @@ class PrecheckTests(unittest.TestCase):
         flattened = " ".join(" ".join(command) for command in commands)
         self.assertNotIn(" connect ", f" {flattened} ")
         self.assertNotIn("scan", flattened)
+        self.assertEqual(result["adb_path"], str(Path("/tmp/adb").resolve()))
         self.assertEqual(result["local_address"], "192.168.31.8")
         self.assertEqual(result["scan_approval"]["scope"], ["192.168.31.0/24"])
     def test_no_devices_is_attention_and_not_proof_adb_is_disabled(self):

@@ -117,7 +117,7 @@ def validate_action_evidence(
         identity = evidence.get("device_identity")
         if not isinstance(identity, dict):
             raise ValueError("设备盘点必须包含 device_identity。")
-        _require(identity, ("manufacturer", "model", "android_version", "sdk", "abi"), "设备身份")
+        _require(identity, ("manufacturer", "model", "android_version", "sdk", "abi", "current_home"), "设备身份")
         _require(evidence, ("target_serial", "commands", "exit_code"), "设备盘点")
         if evidence["exit_code"] != 0 or str(evidence["target_serial"]) != str(pending.get("target_serial")):
             raise ValueError("设备盘点证据与已确认目标不匹配。")
@@ -238,6 +238,49 @@ def validate_action_evidence(
         runtime = pending.get("emotn_runtime", {})
         if "home_key" not in pending.get("selected_actions", ()) or runtime.get("verified") is not True or runtime.get("package") != expected_home:
             raise ValueError("Home 键修改缺少用户选择或 Emotn UI 前台验证。")
+    elif action_id == "RESTORE-HOME-ACTION":
+        _require(
+            evidence,
+            (
+                "target_serial",
+                "before_home",
+                "after_home",
+                "verification_command",
+                "exit_code",
+                "initial_launcher_enabled",
+                "initial_launcher_data_preserved",
+            ),
+            "会话开始桌面恢复",
+        )
+        if evidence["exit_code"] != 0 or evidence["before_home"] == evidence["after_home"]:
+            raise ValueError("会话开始桌面恢复证据未显示实际生效变化。")
+        if str(evidence["target_serial"]) != str(pending.get("target_serial")):
+            raise ValueError("会话开始桌面恢复证据的目标设备不匹配。")
+        expected = str(pending.get("expected_initial_home") or "")
+        if not expected or str(evidence["after_home"]) != expected:
+            raise ValueError("恢复后的 HOME 与只读盘点记录的会话开始桌面不一致。")
+        command = evidence["verification_command"]
+        expected_command = [
+            "-s",
+            str(pending.get("target_serial")),
+            "shell",
+            "cmd",
+            "package",
+            "resolve-activity",
+            "--brief",
+            "-a",
+            "android.intent.action.MAIN",
+            "-c",
+            "android.intent.category.HOME",
+        ]
+        adb_name = str(command[0]).replace("\\", "/").rsplit("/", 1)[-1] if isinstance(command, list) and command else ""
+        if not isinstance(command, list) or len(command) != len(expected_command) + 1 or command[1:] != expected_command or adb_name != "adb":
+            raise ValueError("恢复结果的验证命令必须是绑定目标电视的 ADB HOME 查询。")
+        approved_adb = str(pending.get("adb_path") or "")
+        if approved_adb and str(command[0]) != approved_adb:
+            raise ValueError("恢复结果使用的 ADB 路径与本次会话已验证路径不一致。")
+        if evidence["initial_launcher_enabled"] is not True or evidence["initial_launcher_data_preserved"] is not True:
+            raise ValueError("恢复操作必须保留并启用会话开始时的桌面及其数据。")
     elif action_id == "WALLPAPER-ACTION":
         _require(evidence, ("target_serial", "asset_identity", "verification_result", "exit_code"), "壁纸设置")
         if evidence["exit_code"] != 0 or str(evidence["target_serial"]) != str(pending.get("target_serial")):

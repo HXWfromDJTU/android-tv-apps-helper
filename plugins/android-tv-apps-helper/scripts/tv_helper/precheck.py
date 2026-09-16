@@ -24,6 +24,7 @@ def make_precheck_result(
     devices: Iterable[dict[str, Any]],
     local_address: str | None,
     wifi_name: str | None,
+    adb_path: str | None = None,
 ) -> dict[str, Any]:
     listed = tuple(devices)
     rows = [
@@ -92,6 +93,7 @@ def make_precheck_result(
         "local_address": local_address,
         "wifi_name": wifi_name,
         "scan_approval": scan_approval,
+        "adb_path": adb_path,
     }
 
 
@@ -122,6 +124,7 @@ def run_passive_precheck(
             devices=(),
             local_address=local_address,
             wifi_name=None,
+            adb_path=None,
         )
     try:
         version_result = command_runner(
@@ -133,7 +136,7 @@ def run_passive_precheck(
     except OSError:
         return make_precheck_result(
             adb_available=False, adb_version=None, devices=(),
-            local_address=local_address, wifi_name=None,
+            local_address=local_address, wifi_name=None, adb_path=None,
         )
     version = None
     if version_result.returncode == 0 and version_result.stdout:
@@ -147,4 +150,5 @@ def run_passive_precheck(
         devices=devices,
         local_address=local_address,
         wifi_name=None,
+        adb_path=str(Path(resolved).expanduser().resolve()),
     )

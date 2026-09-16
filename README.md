@@ -2,7 +2,7 @@
 
 一个面向非技术用户的 Android TV 对话式 Skill。它用固定状态机引导用户完成只读预检查、电视确认、应用选择、APK 下载与校验、安装、桌面/壁纸设置、现场验收和 ADB 安全收尾。
 
-当前版本：`v0.3.0`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。三个可下载平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
+当前版本：`v0.3.0`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
 
 ## 这个版本解决了什么
 
@@ -209,7 +209,12 @@ flowchart TD
     DGA -- 完成 --> V
     V -- 正常/稍后/继续处理 --> M
 
-    M -- 结束 --> F[FINISH-SAFETY-Q1<br/>型号对应关闭步骤]
+    M -- 进入任务收尾 --> E[FINISH-CHOICE-Q1<br/>保留现状 / 继续操作 / 恢复会话开始桌面]
+    E -- 保留现状 --> F[FINISH-SAFETY-Q1<br/>型号对应关闭步骤]
+    E -- 继续操作 --> M
+    E -- 恢复会话开始桌面 --> RH[RESTORE-HOME-CONFIRM-Q1<br/>绑定首次盘点的 HOME]
+    RH -- 批准 --> RA[恢复 HOME 并提交验证证据]
+    RA --> F
     F -- 两项都已关闭 --> FC[只读冲突复核]
     FC -- ADB 仍可连接 --> F
     FC -- 无冲突 --> R[表格化最终报告]
