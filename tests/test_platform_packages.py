@@ -15,6 +15,7 @@ PLATFORMS = ("workbuddy", "doubao-work", "claude", "codex")
 ROOT = "android-tv-apps-helper/"
 SHARED_CORE = {
     "references/interaction-contract.md",
+    "references/html-interaction.md",
     "references/workflow.md",
     "references/adb-operations.md",
     "references/apk-policy.md",
@@ -36,6 +37,11 @@ SHARED_CORE = {
     "scripts/tv_helper/session.py",
     "scripts/tv_helper/update.py",
     "scripts/tv_helper/workflow.py",
+    "scripts/tv_helper/html_ui.py",
+    "scripts/tv_helper/html_server.py",
+    "scripts/tv_helper/mcp_ui.py",
+    "scripts/tv_helper/ui/choice.html",
+    "scripts/mcp-requirements.txt",
     "data/copy.zh-CN.json",
     "data/device-guides.json",
     "data/compatibility.json",
@@ -57,7 +63,7 @@ class PlatformPackageTests(unittest.TestCase):
             hashes_by_platform: dict[str, dict[str, str]] = {}
 
             for platform in PLATFORMS:
-                output = temp / f"android-tv-apps-helper-{platform}-v0.3.4.zip"
+                output = temp / f"android-tv-apps-helper-{platform}-v0.4.0-rc.1.zip"
                 result = subprocess.run(
                     [
                         sys.executable,
@@ -75,7 +81,7 @@ class PlatformPackageTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 metadata = json.loads(result.stdout)
                 self.assertEqual(metadata["platform"], platform)
-                self.assertEqual(metadata["version"], "0.3.4")
+                self.assertEqual(metadata["version"], "0.4.0-rc.1")
 
                 with zipfile.ZipFile(output) as archive:
                     names = set(archive.namelist())
@@ -93,7 +99,7 @@ class PlatformPackageTests(unittest.TestCase):
 
                     skill = archive.read(ROOT + "SKILL.md").decode("utf-8")
                     self.assertIn("name: android-tv-apps-helper", skill)
-                    self.assertIn("version: 0.3.4", skill)
+                    self.assertIn("version: 0.4.0-rc.1", skill)
                     frontmatter = skill.split("---", 2)[1]
                     top_level_keys = {
                         line.split(":", 1)[0]
@@ -167,6 +173,18 @@ class PlatformPackageTests(unittest.TestCase):
                 self.assertEqual(response["presentation"]["mode"], "native_required")
                 self.assertIsNone(response["action_required"])
 
+                # Desktop packages must also execute their extracted HTML path.
+                # The Claude archive serves both Desktop (HTML) and Code (native).
+                html_session = temp / platform / "html-session.json"
+                host = "claude-desktop" if platform == "claude" else platform
+                invoke("init-session", str(html_session), "--surface", "html", "--host-platform", host)
+                response = invoke("workflow-start", str(html_session), "--precheck", str(precheck))
+                self.assertEqual(response["presentation"]["mode"], "html_required")
+                self.assertEqual(response["presentation"]["question_id"], "PRECHECK-WIFI-Q1")
+                response = invoke("wait-ui", str(html_session), "--after", "initial", "--timeout", "0")
+                self.assertTrue(response["changed"])
+                self.assertEqual(response["presentation"]["mode"], "html_required")
+
             first = hashes_by_platform[PLATFORMS[0]]
             for platform in PLATFORMS[1:]:
                 self.assertEqual(hashes_by_platform[platform], first)
@@ -209,7 +227,7 @@ class PlatformPackageTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             metadata = json.loads(result.stdout)
-            self.assertEqual(metadata["version"], "0.3.4")
+            self.assertEqual(metadata["version"], "0.4.0-rc.1")
             self.assertEqual(len(metadata["artifacts"]), 4)
             lines = (output_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(lines), 4)

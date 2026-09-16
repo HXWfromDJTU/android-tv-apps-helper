@@ -1,0 +1,2 @@
+# Optional only for embedded MCP Apps. Browser UI uses Python standard library.
+mcp==1.26.0

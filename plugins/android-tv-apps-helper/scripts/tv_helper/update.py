@@ -23,10 +23,12 @@ def _parse(version: str) -> tuple[tuple[int, int, int], str | None]:
 
 
 def compare_stable_versions(installed: str, candidate: str) -> int | None:
-    installed_core, _ = _parse(installed)
+    installed_core, installed_prerelease = _parse(installed)
     candidate_core, candidate_prerelease = _parse(candidate)
     if candidate_prerelease is not None:
         return None
+    if candidate_core == installed_core and installed_prerelease is not None:
+        return 1
     return (candidate_core > installed_core) - (candidate_core < installed_core)
 
 
@@ -121,6 +123,8 @@ def validate_update_package(
     expected_version: str,
     expected_platform: str,
 ) -> dict[str, Any]:
+    if expected_platform == "claude-desktop":
+        expected_platform = "claude"
     target = Path(path)
     actual_sha = hashlib.sha256(target.read_bytes()).hexdigest()
     if actual_sha != expected_sha256:

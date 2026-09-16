@@ -7,3 +7,6 @@ outputs/
 .coverage
 .worktrees/
 dist/
+dist-v*/
+output/
+.playwright-cli/

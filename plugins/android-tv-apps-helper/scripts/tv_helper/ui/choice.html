@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  />
+  <title>Android TV Apps Helper · 点选助手</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family:
+        system-ui,
+        -apple-system,
+        sans-serif;
+      --bg: #f3f6fb;
+      --panel: #fff;
+      --text: #182334;
+      --muted: #526176;
+      --line: #dce4ee;
+      --accent: #245de1;
+      --soft: #eef3ff;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding-bottom: 190px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 850px;
+      margin: 24px auto;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      background: var(--accent);
+      border-radius: 14px;
+      color: white;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    h1 {
+      font-size: 21px;
+      margin: 0;
+    }
+    header p {
+      margin: 5px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      margin: 16px 0;
+    }
+    h2 {
+      font-size: 17px;
+      margin: 0 0 16px;
+    }
+    .table-wrap {
+      overflow: auto;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+    }
+    th,
+    td {
+      padding: 11px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    th {
+      background: var(--soft);
+      white-space: nowrap;
+    }
+    td:first-child {
+      white-space: nowrap;
+    }
+    #blocker {
+      color: #a0520d;
+      font-weight: 600;
+    }
+    li {
+      margin: 8px 0;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+    .choice {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 14px;
+      margin: 9px 0;
+      cursor: pointer;
+    }
+    .choice:has(input:checked) {
+      background: var(--soft);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .choice:has(input:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    input[type="radio"],
+    input[type="checkbox"] {
+      margin: 3px 0;
+      width: 19px;
+      height: 19px;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+    .detail {
+      display: block;
+      margin-top: 5px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 80px;
+      margin: 10px 0;
+      padding: 12px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+    }
+    button {
+      border: 0;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      padding: 12px 23px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button.secondary {
+      background: var(--soft);
+      color: var(--accent);
+      margin-left: 8px;
+    }
+    #error {
+      color: #b32929;
+      white-space: pre-wrap;
+    }
+    #notice {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    #waiting {
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+    details {
+      margin: 15px 0;
+      color: var(--muted);
+    }
+    a {
+      color: var(--accent);
+    }
+    [hidden] {
+      display: none !important;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #101722;
+        --panel: #182231;
+        --text: #edf2fb;
+        --muted: #afbdd1;
+        --line: #344357;
+        --accent: #7aabff;
+        --soft: #23344d;
+      }
+      #blocker {
+        color: #f8c375;
+      }
+      #error {
+        color: #ff9393;
+      }
+      button {
+        color: #101722;
+      }
+      .logo {
+        color: #101722;
+      }
+    }
+    @media (max-width: 600px) {
+      main {
+        padding: 12px;
+        margin: 0 auto;
+      }
+      section {
+        padding: 15px;
+      }
+      h1 {
+        font-size: 18px;
+      }
+    }
+    #actions {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 810px;
+      background: var(--panel);
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -5px 18px #00000012;
+      z-index: 2;
+    }
+    #actions button {
+      margin-top: 4px;
+    }
+    #selected-apps {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 10px;
+      max-height: 72px;
+      overflow: auto;
+      line-height: 1.5;
+    }
+  </style>
+  <main>
+    <header>
+      <div class="logo" aria-label="RA 图标">RA</div>
+      <div>
+        <h1>Android TV Apps Helper</h1>
+        <p>一步一选 · 由你确认，再继续</p>
+      </div>
+    </header>
+    <section id="context" hidden>
+      <h2>当前进度</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>状态</th>
+              <th>事项</th>
+              <th>结果</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p id="blocker" hidden></p>
+      <ol id="guidance"></ol>
+    </section>
+    <section>
+      <form id="form">
+        <h2 id="question">正在连接会话…</h2>
+        <div id="options"></div>
+        <div id="input-area" hidden>
+          <label for="input">填写所需信息</label
+          ><textarea id="input" maxlength="8192"></textarea>
+        </div>
+        <details id="extra">
+          <summary>补充说明（可选，不能代替选择）</summary>
+          <textarea
+            id="supplement"
+            maxlength="8192"
+            placeholder="需要补充时再填写"
+          ></textarea>
+        </details>
+        <p id="error" role="alert"></p>
+        <p id="waiting" hidden></p>
+        <div id="actions">
+          <p id="selected-apps" hidden></p>
+          <button id="submit" disabled type="submit">确认选择</button
+          ><button class="secondary" id="refresh" type="button">
+            刷新状态
+          </button>
+        </div>
+      </form>
+      <p id="notice" aria-live="polite">
+        页面仅接收选择，不会自行下载软件或修改电视。
+      </p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+      const $ = (id) => document.getElementById(id),
+        embedded = window.parent !== window;
+      const token =
+        new URLSearchParams(location.hash.slice(1)).get("token") || "";
+      let current = null,
+        busy = false,
+        sessionKey = "",
+        rpcId = 0,
+        hostReady = false;
+      const pending = new Map(),
+        symbols = {
+          completed: "✅",
+          failed: "❌",
+          attention: "⚠️",
+          pending: "⏳",
+          skipped: "⏭️",
+        };
+      function savedSelection(p) {
+        try {
+          return (
+            JSON.parse(
+              sessionStorage.getItem("tv-choice:" + p.presentation_id),
+            ) ||
+            p.selected ||
+            []
+          );
+        } catch (_) {
+          return p.selected || [];
+        }
+      }
+      function saveSelection(p, values) {
+        try {
+          sessionStorage.setItem(
+            "tv-choice:" + p.presentation_id,
+            JSON.stringify(values),
+          );
+        } catch (_) {}
+      }
+      function notify(method, params) {
+        window.parent.postMessage({ jsonrpc: "2.0", method, params }, "*");
+      }
+      function rpc(method, params) {
+        return new Promise((resolve, reject) => {
+          const id = ++rpcId;
+          const timer = setTimeout(() => {
+            pending.delete(id);
+            reject(new Error("宿主响应超时，请刷新状态。"));
+          }, 10000);
+          pending.set(id, { resolve, reject, timer });
+          window.parent.postMessage(
+            { jsonrpc: "2.0", id, method, params },
+            "*",
+          );
+        });
+      }
+      function unpack(result) {
+        if (result.isError)
+          throw new Error(
+            result.content?.map((c) => c.text || "").join("\n") || "提交失败",
+          );
+        return (
+          result.structuredContent ||
+          JSON.parse(result.content.find((c) => c.type === "text").text)
+        );
+      }
+      async function request(route, payload) {
+        if (embedded) {
+          if (!sessionKey) throw new Error("等待宿主提供会话。");
+          if (route === "/state") {
+            const result = await rpc("resources/read", {
+              uri: "tv-state://" + sessionKey,
+            });
+            return JSON.parse(result.contents[0].text);
+          }
+          return unpack(
+            await rpc("tools/call", {
+              name: "tv_ui_submit",
+              arguments: { session_key: sessionKey, payload },
+            }),
+          );
+        }
+        const r = await fetch(route, {
+          method: payload ? "POST" : "GET",
+          headers: {
+            Authorization: "Bearer " + token,
+            "Content-Type": "application/json",
+          },
+          ...(payload ? { body: JSON.stringify(payload) } : {}),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "请求失败");
+        return data;
+      }
+      function el(tag, text) {
+        const e = document.createElement(tag);
+        if (text !== undefined) e.textContent = text;
+        return e;
+      }
+      function guidance(text) {
+        const li = el("li");
+        const parts = text.split(/(https:\/\/[^\s<>]+)/g);
+        for (const p of parts) {
+          if (p.startsWith("https://")) {
+            const a = el("a", p);
+            a.href = p;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            li.append(a);
+          } else li.append(document.createTextNode(p));
+        }
+        return li;
+      }
+      function terminalTable(markdown) {
+        $("rows").replaceChildren();
+        for (const line of (markdown || "").split("\n")) {
+          if (
+            !line.startsWith("|") ||
+            line.includes("---") ||
+            line.includes("状态 |")
+          )
+            continue;
+          const fields = line
+            .split("|")
+            .slice(1, -1)
+            .map((s) => s.trim());
+          const tr = el("tr");
+          for (const text of fields.slice(0, 3)) tr.append(el("td", text));
+          $("rows").append(tr);
+        }
+      }
+      function render(data) {
+        if (data.session_key) sessionKey = data.session_key;
+        if (current?.revision === data.revision) return;
+        current = data;
+        $("error").textContent = "";
+        $("options").replaceChildren();
+        $("input").value = "";
+        $("supplement").value = "";
+        $("input-area").hidden = true;
+        $("waiting").hidden = true;
+        $("extra").hidden = false;
+        const p = data.presentation;
+        if (!p) {
+          $("context").hidden = false;
+          $("blocker").hidden = true;
+          $("guidance").replaceChildren();
+          $("submit").hidden = true;
+          $("extra").hidden = true;
+          $("question").textContent = data.action_required
+            ? "选择已确认，等待 Agent 处理"
+            : data.terminal
+              ? "本次流程已结束"
+              : "等待 Agent 准备当前问题";
+          $("waiting").hidden = false;
+          $("waiting").textContent = data.action_required
+            ? "已保存你的选择。Agent 需要执行已批准的操作并回传结果；本页面不会冒充执行成功。"
+            : data.terminal
+              ? "任务结果已保存。"
+              : "会话尚未进入可选择的问题，请等待 Agent 完成初始化。";
+          terminalTable(
+            data.final_report ||
+              (data.action_required
+                ? "| ⏳ | 已确认的操作 | 等待执行与核验 |"
+                : "| ⏳ | 初始化 | 等待当前问题 |"),
+          );
+          return;
+        }
+        $("submit").hidden = false;
+        $("context").hidden = false;
+        $("question").textContent = p.prompt;
+        $("rows").replaceChildren();
+        for (const row of p.rows) {
+          const tr = el("tr");
+          tr.append(
+            el("td", symbols[row.status] || "⚠️"),
+            el("td", row.item),
+            el("td", row.result),
+          );
+          $("rows").append(tr);
+        }
+        $("blocker").hidden = !p.blocker;
+        $("blocker").textContent = p.blocker;
+        $("guidance").replaceChildren(...p.guidance.map(guidance));
+        for (const option of p.options) {
+          const label = el("label");
+          label.className = "choice";
+          const input = el("input");
+          input.type = p.kind === "multi_choice" ? "checkbox" : "radio";
+          input.name = "choice";
+          input.value = option.value;
+          input.disabled = !option.enabled;
+          input.checked =
+            p.kind === "multi_choice" &&
+            option.enabled &&
+            savedSelection(p).includes(option.value);
+          const text = el(
+            "span",
+            option.label + (option.recommended ? "（推荐）" : ""),
+          );
+          if (option.description) {
+            const detail = el("span", option.description);
+            detail.className = "detail";
+            text.append(detail);
+          }
+          label.append(input, text);
+          $("options").append(label);
+          input.addEventListener("change", () => {
+            if (p.kind === "multi_choice" && input.checked) {
+              for (const other of $("options").querySelectorAll(
+                "input:checked",
+              )) {
+                if (
+                  other !== input &&
+                  p.options.find((o) => o.value === other.value).next_state !==
+                    option.next_state
+                )
+                  other.checked = false;
+              }
+            }
+            updateSubmit();
+          });
+        }
+        $("input-area").hidden = !p.accepts_free_input;
+        if (p.accepts_free_input) {
+          $("input").placeholder =
+            "在此填写内容，无需输入 " + (p.input_prefix || "") + " 前缀";
+        }
+        updateSubmit();
+      }
+      function updateSubmit() {
+        const selected = [...$("options").querySelectorAll("input:checked")],
+          p = current?.presentation;
+        $("submit").disabled =
+          busy ||
+          !selected.length ||
+          (selected.some((i) => i.value === "ui:submit_input") &&
+            !$("input").value.trim());
+        const apps = p?.question_id === "APPS-Q1";
+        $("selected-apps").hidden = !apps;
+        $("submit").textContent =
+          apps &&
+          selected.every(
+            (i) =>
+              p.options.find((o) => o.value === i.value)?.next_state ===
+              "DOWNLOAD-CONFIRM",
+          )
+            ? "确认所选应用，进入安装流程"
+            : "确认选择";
+        if (p?.kind === "multi_choice") {
+          saveSelection(
+            p,
+            selected.map((i) => i.value),
+          );
+          const names = selected.map(
+            (i) => p.options.find((o) => o.value === i.value)?.label || i.value,
+          );
+          $("selected-apps").textContent =
+            "已选 " +
+            names.length +
+            " 项：" +
+            (names.join("、") || "请勾选想安装的应用");
+        }
+      }
+      async function refresh() {
+        try {
+          const data = await request("/state");
+          render(data);
+          $("notice").textContent =
+            "连接正常 · 请主动点选并确认，推荐项不会自动提交。";
+        } catch (e) {
+          $("error").textContent = e.message;
+        }
+      }
+      $("input").addEventListener("input", updateSubmit);
+      $("refresh").onclick = refresh;
+      $("form").onsubmit = async (e) => {
+        e.preventDefault();
+        if (busy || !current?.presentation) return;
+        const p = current.presentation,
+          values = [...$("options").querySelectorAll("input:checked")].map(
+            (i) => i.value,
+          );
+        if (!values.length) {
+          $("error").textContent = "请先选择一项。";
+          return;
+        }
+        busy = true;
+        updateSubmit();
+        try {
+          const data = await request("/answer", {
+            question_id: p.question_id,
+            presentation_id: p.presentation_id,
+            values,
+            text: values.includes("ui:submit_input") ? $("input").value : "",
+            note: $("supplement").value,
+          });
+          render(data);
+          if (!data.accepted)
+            $("error").textContent =
+              data.error || "请检查输入后重新选择并确认。";
+          else if (embedded && !data.ui_only) {
+            try {
+              const sent = await rpc("ui/message", {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "我已在电视助手页面提交选择。请读取 tv_ui_state 的当前状态，仅执行已批准的 action_required，并回传证据。",
+                  },
+                ],
+              });
+              if (sent?.isError) throw new Error("通知未送达");
+            } catch (_) {
+              $("notice").textContent =
+                "选择已保存；宿主未接收通知，Agent 须通过 tv_ui_wait 获取结果。";
+            }
+          }
+        } catch (e) {
+          await refresh();
+          $("error").textContent = e.message;
+        } finally {
+          busy = false;
+          updateSubmit();
+        }
+      };
+      if (embedded) {
+        window.addEventListener("message", (e) => {
+          if (e.source !== window.parent || e.data?.jsonrpc !== "2.0") return;
+          const m = e.data;
+          if (pending.has(m.id)) {
+            const p = pending.get(m.id);
+            clearTimeout(p.timer);
+            pending.delete(m.id);
+            m.error
+              ? p.reject(new Error(m.error.message))
+              : p.resolve(m.result);
+            return;
+          }
+          if (m.method === "ui/notifications/tool-result") {
+            try {
+              render(unpack(m.params));
+            } catch (e) {
+              $("error").textContent = e.message;
+            }
+          }
+          if (m.method === "ui/resource-teardown")
+            window.parent.postMessage(
+              { jsonrpc: "2.0", id: m.id, result: {} },
+              "*",
+            );
+        });
+        rpc("ui/initialize", {
+          protocolVersion: "2026-01-26",
+          appInfo: { name: "android-tv-apps-helper", version: "0.4.0-rc.1" },
+          appCapabilities: {},
+        })
+          .then(() => {
+            hostReady = true;
+            notify("ui/notifications/initialized", {});
+          })
+          .catch((e) => {
+            $("error").textContent =
+              e.message + " 请通过 Agent 打开本地点选页面。";
+          });
+        new ResizeObserver(() => {
+          if (hostReady)
+            notify("ui/notifications/size-changed", {
+              height: Math.min(700, document.body.scrollHeight),
+            });
+        }).observe(document.body);
+      } else refresh();
+      setInterval(() => {
+        if (!busy && (!embedded || sessionKey)) refresh();
+      }, 1500);
+    })();
+  </script>
+</html>

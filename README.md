@@ -2,7 +2,89 @@
 
 一个面向非技术用户的 Android TV 对话式 Skill。它用固定状态机引导用户完成只读预检查、电视确认、应用选择、APK 下载与校验、安装、桌面/壁纸设置、现场验收和 ADB 安全收尾。
 
-当前版本：`v0.3.4`。支持 Codex、腾讯 WorkBuddy 中国大陆版、豆包工作，以及 Claude Desktop / Claude Code 包。四个平台包共享同一套 Python harness 和流程合同；平台 UI 只改变展示形式，不改变问题、选项、批准边界或结果判断。
+当前测试版：**`v0.4.0-rc.1`：统一 HTML 点选**。稳定版仍为 `v0.3.4`，稳定更新检查不会自动推送测试版。四个平台包共享同一套 Python harness；UI 不改变问题、批准边界或结果判断。
+
+## 新版交互与验收范围
+
+| 状态 | 改动 | 用户看到的效果 |
+|---|---|---|
+| ✅ | 四个桌面平台统一 HTML | Codex、Claude Desktop、WorkBuddy、豆包工作使用同一页面；优先 MCP App 内嵌，不可用时打开本地点选网页 |
+| ✅ | 完整应用列表 | 同屏列表滚动、多选；不再把应用拆成多页原生选择题 |
+| ✅ | 固定底部确认 | 勾选应用后直接点「确认所选应用，进入安装流程」，不必翻页找按钮 |
+| ✅ | 按名称再次确认 | 先确认下载哪些应用，下载与安装仍分别批准，不把勾选当成安装授权 |
+| ✅ | 上下文可读 | 表格、状态 emoji、阻塞点和操作指引在问题上方；标题只放简短问题 |
+| ✅ | 等待真实点击 | 空选、重复、过期回调不能推进；补充输入在选项之后；不退回文字编号菜单 |
+| ⚠️ | 客户端实际内嵌 | 已有协议/浏览器测试和客户端能力线索，但本版尚未完成真实客户端安装与内嵌点击验收 |
+| ⏭️ | Claude Code | 继续使用原生选择组件；不属于桌面 HTML 迁移范围 |
+
+**Skill ZIP 不会自动注册 MCP 组件。** 普通 HTML 预览也不等于能把点击回传给 Agent。内嵌需要配置本地 MCP server；没有 MCP 时可以直接使用本地浏览器模式，仍然是点击选择。详见 [HTML 接入说明](plugins/android-tv-apps-helper/skills/android-tv-apps-helper/references/html-interaction.md) 和 [本版测试报告](docs/platform-validation-v0.4.0-rc.1.md)。
+
+## v0.4.0-rc.1 从安装到使用
+
+### 1. 安装当前平台的 Skill
+
+在对应 Agent 新建本地电脑会话，复制以下提示词，将链接换成下表中对应平台的链接即可。不要让云电脑连接家中电视。
+
+```text
+请安装 Android TV Apps Helper v0.4.0-rc.1 测试版。
+下载并校验同一 Release 的 SHA256SUMS；备份当前 Skill 后再替换，保留会话和用户数据，不动其他 Skill。
+安装包：https://github.com/SwainWong/android-tv-apps-helper/releases/download/v0.4.0-rc.1/android-tv-apps-helper-workbuddy-v0.4.0-rc.1.zip
+安装后报告实际安装路径与版本。现在不要连接或修改电视。
+这是 HTML 交互版本：请读取 references/html-interaction.md。
+若已注册本插件 MCP server，请核实 tv_ui_show 可调用；否则先使用无需额外依赖的本地浏览器模式，不要声称 ZIP 安装已经配置好了内嵌组件。
+```
+
+| 平台 | 安装 ZIP |
+|---|---|
+| 腾讯 WorkBuddy 中国大陆版 | [WorkBuddy ZIP](https://github.com/SwainWong/android-tv-apps-helper/releases/download/v0.4.0-rc.1/android-tv-apps-helper-workbuddy-v0.4.0-rc.1.zip) |
+| 豆包工作 | [豆包工作 ZIP](https://github.com/SwainWong/android-tv-apps-helper/releases/download/v0.4.0-rc.1/android-tv-apps-helper-doubao-work-v0.4.0-rc.1.zip) |
+| Codex | [Codex ZIP](https://github.com/SwainWong/android-tv-apps-helper/releases/download/v0.4.0-rc.1/android-tv-apps-helper-codex-v0.4.0-rc.1.zip) |
+| Claude Desktop / Code | [Claude ZIP](https://github.com/SwainWong/android-tv-apps-helper/releases/download/v0.4.0-rc.1/android-tv-apps-helper-claude-v0.4.0-rc.1.zip) |
+
+如果宿主只下载而没有安装，使用它的技能管理导入同一个 ZIP。Codex 可装到个人 Skills；Claude Code 可装到 `.claude/skills/`。Claude Desktop 还需要可在本机执行 harness 的能力；仅云端代码执行或仅 UI MCP server 都不能操作本机电视。安装成功要以实际目录/技能列表和新会话调用为准，不能只看下载提示。
+
+### 2. 可选：启用聊天内嵌 HTML
+
+可以把下面提示词交给安装 Agent；也可跳过，先用本地浏览器点选：
+
+```text
+请为 Android TV Apps Helper 配置本地 MCP Apps 内嵌交互。
+按 references/html-interaction.md，在 Skill 内建立独立 Python 3.11+ 虚拟环境，安装 scripts/mcp-requirements.txt。
+保留现有 MCP 配置，新增 stdio 服务：虚拟环境 Python 运行 scripts/tv-helper mcp-ui --session-root <只包含本插件会话的现有目录>，所有路径使用绝对路径。
+不要开启全局免确认或绕过权限。告诉我是否需要重启/新建会话，并实际检查 tv_ui_show、页面渲染和点击回传。
+若当前客户端不能内嵌，请使用 serve-ui / wait-ui 本地浏览器点选，不使用文字编号菜单，也不要代我点击。
+```
+
+不同客户端的 MCP 设置入口和权限流程由客户端决定，不直接覆盖整个配置文件。本版没有替用户预注册云服务或 Buddy App。MCP 注册失败不影响纯标准库浏览器模式；两条通道都不可用时保留当前问题并解释阻塞。
+
+### 3. 启动
+
+新建会话，发送：
+
+```text
+使用 Android TV Apps Helper v0.4.0-rc.1，采用当前桌面平台的 HTML 点选流程。
+先自动只读预检查；在上下文中表格展示结果、阻塞和解决方法，标题保持简短。
+打开真实可点击页面，等待我的选择。应用完整多选，底部固定显示「确认所选应用，进入安装流程」。
+页面提交后读取同一 session 的真实状态；需要执行时仅执行已批准动作并回传证据。
+保持 MCP tv_ui_wait 或浏览器 wait-ui 等待循环，不要让我输入数字或输入“继续”来触发下一题。
+```
+
+### 4. 按页面完成流程
+
+1. 查看预检查结果，确认同一 Wi-Fi 和电视调试权限；缺少 ADB 时按页面指引处理。
+2. 确认正确电视，勾选需要的应用。选中后底部显示已选名称，随时可确认，不用翻页。
+3. 核对应用名称和版本后批准下载；检查结果再生成安装方案，由你单独批准安装。
+4. 如选择桌面/壁纸，先看当前系统兼容风险，再分别批准；壁纸可能被电视系统恢复。
+5. 检查画面、声音与遥控器结果，最后按电视型号指引关闭 ADB/无线调试和开发者模式。
+
+输入 IP、路径等信息前先点「填写信息」入口；补充说明不能代替选择或批准。已有旧会话不要重新初始化覆盖：让 Agent 使用 `resume-html` 恢复当前问题，保留已选应用。Codex HTML 不依赖 Plan 模式的问答工具。
+
+### 5. 测试版限制
+
+浏览器页面不会自行唤醒已经结束回合的 Agent，因此 Agent 必须保持有上限的等待循环；若宿主不允许后台进程或等待，会明确暂停。本版浏览器/协议通过不等于四客户端内嵌通过，真实电视未操作。请反馈具体平台、版本和卡住的页面，不要公开包含凭据的本地页面 URL 或 session 文件。
+
+<details>
+<summary>历史稳定版 v0.3.4 的原生交互安装说明（不适用于上面的 HTML 测试版）</summary>
 
 ## 这个版本解决了什么
 
@@ -156,6 +238,8 @@ cd android-tv-apps-helper
 5. 表格和处理指引固定放在组件前的可见对话中，组件只保留简短问题和选项。调用失败原生重试一次；工具缺失或再次失败则暂停，禁止静默文字降级。
 6. 原问题有“安全退出”时，每页都保留它；翻页不批准操作，使用过 ADB 后仍进入安全收尾。客户端恢复后可继续当前问题。
 
+</details>
+
 ## 完整状态流转
 
 ```mermaid
@@ -197,7 +281,7 @@ flowchart TD
     T -- 确认 --> I[只读盘点系统/ABI/空间/Home/应用<br/>匹配型号指引和兼容性]
     I -- 有证据 --> M[TASK-Q1]
     M -- 查看并选择推荐应用 --> AP[APPS-Q1<br/>用途/版本/已安装/可用性]
-    AP -- 原生多选或分页面点选 --> DC[DOWNLOAD-CONFIRM-Q1<br/>按名称和版本二次确认]
+    AP -- HTML完整多选并确认或ClaudeCode原生选择 --> DC[DOWNLOAD-CONFIRM-Q1<br/>按名称和版本二次确认]
     DC -- 确认下载 --> DA[下载+来源+SHA-256+包体身份校验]
     DA -- 失败 --> DC
     DA -- 通过 --> DV[DOWNLOAD-VERIFY-Q1]
@@ -259,7 +343,7 @@ flowchart TD
 | Emotn UI | 已记录官网页面的 APK 链接 | ✅ 可选并发起下载；本轮未下载验证包体 |
 | 佳视通、乘风TV、魄狼TV、奈飞工厂TV | 目前目录未记录下载链接 | ✅ 可选；确认后 Agent 查找链接，实际找不到才报告失败，不隐藏 |
 
-当贝使用目录内已有 CDN 地址；实际不可达时提供原生重试、返回列表或退出，不再让用户上传本地 APK。下载到用户电脑与公开镜像到本项目是两个动作；本次开放下载选择，不等于已将全部 APK 上传至 GitHub。
+当贝使用目录内已有 CDN 地址；实际不可达时在当前点选界面提供重试、返回列表或退出，不再让用户上传本地 APK。下载到用户电脑与公开镜像到本项目是两个动作；本次开放下载选择，不等于已将全部 APK 上传至 GitHub。
 
 ## 安全边界
 
@@ -277,7 +361,7 @@ python3 scripts/build_release.py --output-dir dist
 (cd dist && shasum -a 256 -c SHA256SUMS)
 ```
 
-平台验证结果见 [docs/platform-validation.md](docs/platform-validation.md)，历史问题和解决方案见 [docs/ux-feedback-log.md](docs/ux-feedback-log.md)。
+本版验证结果见 [HTML 测试报告](docs/platform-validation-v0.4.0-rc.1.md)，历史验证见 [平台报告索引](docs/platform-validation.md)，历史问题和解决方案见 [docs/ux-feedback-log.md](docs/ux-feedback-log.md)。
 
 ## License
 

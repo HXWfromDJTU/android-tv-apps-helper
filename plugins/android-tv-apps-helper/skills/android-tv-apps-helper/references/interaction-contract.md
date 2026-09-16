@@ -2,7 +2,13 @@
 
 ## Invariants
 
-Claude, Codex, WorkBuddy and 豆包工作 share the workflow, `pending_question`, stable option values, approvals and evidence labels. Every decision uses a real host-native `structured_form` choice component. A numbered-text menu is not a supported interactive surface, even after an error.
+Claude, Codex, WorkBuddy and 豆包工作 share the workflow, `pending_question`, stable option values, approvals and evidence labels. Codex/Claude Desktop/WorkBuddy/Doubao use the real HTML controller described in html-interaction.md; Claude Code and legacy checkpoints use host-native `structured_form`. A numbered-text menu is unsupported, even after an error.
+
+## HTML decisions
+
+The same page is an embedded MCP App when the host supports it, or an authenticated loopback browser page. Both submit exact option values bound to the current question/presentation. The page shows context as a table above the short question, full application checkboxes and an always-visible confirmation footer, then optional supplemental input. The confirmation goes to named download confirmation, never directly executes installs. Read `tv_ui_state`/`wait-ui` after clicks; never submit them again through native CLI. No page/progress notification constitutes approval.
+
+The remaining native sections apply to `native_required`, not `html_required`; do not attempt to call an absent native tool for an HTML session.
 
 Only render questions from `workflow-entry`, `workflow-native-answer`, `workflow-discover` and `workflow-action-result`. Do not invent questions, edit session JSON, bypass with legacy `workflow-answer`, or advance without an accepted answer. A pending action waits for evidence.
 

@@ -1,6 +1,6 @@
 # Workflow States
 
-The harness is the state authority. The Agent renders its `InteractionFrame`, submits the user's exact answer, and performs only the already-approved operation associated with the accepted transition. It does not author alternate questions or jump states.
+The harness is the state authority. HTML desktop adapters and legacy/native adapters share these states. References below to native pagination apply only to native sessions; HTML uses the full checkbox list with a fixed confirmation footer. The Agent performs only the approved operation associated with the accepted transition. It does not author alternate questions or jump states.
 
 ## Entry and update
 

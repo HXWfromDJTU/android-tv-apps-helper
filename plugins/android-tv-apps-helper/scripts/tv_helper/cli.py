@@ -26,11 +26,11 @@ def _parser() -> argparse.ArgumentParser:
 
     init = subcommands.add_parser("init-session")
     init.add_argument("session", type=Path)
-    init.add_argument("--surface", required=True, choices=("auto", "structured_form", "text_menu"))
+    init.add_argument("--surface", required=True, choices=("auto", "structured_form", "text_menu", "html"))
     init.add_argument(
         "--host-platform",
         default="codex",
-        choices=("claude", "codex", "workbuddy", "doubao-work"),
+        choices=("claude", "claude-desktop", "codex", "workbuddy", "doubao-work"),
     )
     init.add_argument(
         "--execution-context",
@@ -43,6 +43,20 @@ def _parser() -> argparse.ArgumentParser:
 
     show = subcommands.add_parser("show-session")
     show.add_argument("session", type=Path)
+
+    serve = subcommands.add_parser("serve-ui")
+    serve.add_argument("session", type=Path)
+    serve.add_argument("--port", type=int, default=0)
+    serve.add_argument("--open", action="store_true")
+    wait = subcommands.add_parser("wait-ui")
+    wait.add_argument("session", type=Path)
+    wait.add_argument("--after", required=True)
+    wait.add_argument("--timeout", type=float, default=25)
+    html_resume = subcommands.add_parser("resume-html")
+    html_resume.add_argument("session", type=Path)
+    html_resume.add_argument("--question-id", required=True)
+    mcp = subcommands.add_parser("mcp-ui")
+    mcp.add_argument("--session-root", required=True, type=Path)
 
     surface_failure = subcommands.add_parser("record-surface-failure")
     surface_failure.add_argument("session", type=Path)
@@ -186,10 +200,25 @@ def _interactive_payload(
     }
 
 
-def main(arguments: Sequence[str] | None = None) -> int:
+def _main(arguments: Sequence[str] | None = None) -> int:
     try:
         args = _parser().parse_args(arguments)
-        if args.command == "init-session":
+        if args.command == "mcp-ui":
+            from .mcp_ui import create_server
+            create_server(args.session_root).run(transport="stdio")
+        elif args.command == "serve-ui":
+            from .html_server import serve
+            serve(SessionStore(args.session), port=args.port, open_browser=args.open)
+        elif args.command == "wait-ui":
+            from .html_ui import HtmlController
+            _print_json(HtmlController(SessionStore(args.session)).wait(args.after, args.timeout))
+        elif args.command == "resume-html":
+            from .html_ui import HtmlController, session_lock
+            store = SessionStore(args.session)
+            with session_lock(args.session):
+                store.resume_html(args.question_id)
+            _print_json(HtmlController(store).snapshot())
+        elif args.command == "init-session":
             store = SessionStore.create(
                 args.session,
                 interaction_surface=args.surface,
@@ -451,6 +480,22 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 return 2
         print(str(error), file=sys.stderr)
         return 2
+
+
+def main(arguments: Sequence[str] | None = None) -> int:
+    args = _parser().parse_args(arguments)
+    # Serialize action evidence/transition writes with HTML callbacks and polling.
+    # Long-lived UI servers/waiters acquire their own per-request locks.
+    guarded = {
+        "workflow-start", "workflow-entry", "workflow-answer", "workflow-native-answer",
+        "workflow-action-result", "workflow-discover", "prepare-device-context",
+        "record-surface-failure", "resume-native", "prepare-install-plan", "approve-install", "plan-install",
+    }
+    if args.command in guarded and args.session.is_file():
+        from .html_ui import session_lock
+        with session_lock(args.session):
+            return _main(arguments)
+    return _main(arguments)
 
 
 if __name__ == "__main__":

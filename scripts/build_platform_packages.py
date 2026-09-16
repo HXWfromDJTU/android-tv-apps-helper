@@ -90,18 +90,22 @@ def _skill_body(platform: str) -> str:
             "python3 ../../scripts/tv-helper",
             "python3 scripts/tv-helper",
         )
-    if platform in {"workbuddy", "doubao-work", "claude"}:
-        adapter = """## Host-native interaction adapter
+    if platform == "claude":
+        adapter = """## Claude host routing
 
-Always display `presentation.context_markdown` in visible conversation immediately before the control. Keep the card title/question limited to the supplied question; do not append results, risks or guidance. Call `AskUserQuestion` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required`. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is unavailable or fails to render, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and observed error to obtain one native retry or a native_blocked pause; never use numbered text choices.
+Claude Desktop uses `--host-platform claude-desktop --surface html` and references/html-interaction.md. Resolve the actual installed local Skill path; Desktop need not define CLAUDE_SKILL_DIR. Embedded UI requires separately registered MCP. Claude Code keeps `--host-platform claude --surface auto`: Call `AskUserQuestion` for native_required, preserving the exact payload and explicit consent. Never use a numbered-text menu.
+
+"""
+    elif platform in {"workbuddy", "doubao-work"}:
+        adapter = """## Desktop HTML interaction adapter
+
+New local-computer sessions use `--surface html` with this package's platform ID. Read references/html-interaction.md for embedded MCP installation/callbacks and local-browser fallback; wait for real clicks. Legacy native sessions remain supported: Call `AskUserQuestion` with exact payload for native_required, or migrate their pending question with resume-html. Never convert a blocked component into a numbered chat menu.
 
 """
     else:
-        adapter = """## Host-native interaction adapter
+        adapter = """## Codex HTML interaction adapter
 
-Inspect actual callable tools and mode restrictions before initialization. Prefer `request_user_input_async` when available; pass `--native-tool request_user_input_async` to `init-session`. Otherwise select `request_user_input` only if callable in the current mode. Read references/platforms.md for capability recovery; do not assume Default mode has no native UI or require Plan without checking both tools.
-
-Display `presentation.context_markdown` before calling `presentation.tool_name` with exact `tool_input`. Keep the question short. For `response_delivery=async_user_message`, the tool returns before the user answers: preserve the current question/presentation IDs, yield and wait for the actual user reply. Never treat tool success, preselection, silence or an unrelated message as consent. Submit the actual selection through `workflow-native-answer`; do not print a numbered-text menu. Record only observed failures after checking both native tools.
+Use `--surface html --host-platform codex` and references/html-interaction.md. Prefer a real installed/rendered MCP App; otherwise use serve-ui and keep wait-ui active. No Plan-mode switch is required for the browser choice UI. Existing request_user_input_async/native checkpoints may migrate using resume-html without discarding their question. Never ask the model to invent selections.
 
 """
     return body.replace("# Android TV Apps Helper\n", "# Android TV Apps Helper\n\n" + adapter, 1)

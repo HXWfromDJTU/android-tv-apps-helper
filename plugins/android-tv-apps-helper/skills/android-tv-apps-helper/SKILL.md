@@ -11,37 +11,29 @@ The harness owns questions, transitions, validation and approvals; supply verifi
 
 Read [references/platforms.md](references/platforms.md), [references/interaction-contract.md](references/interaction-contract.md), and [references/workflow.md](references/workflow.md). Require a local-computer context with local shell and LAN access. Cloud-only execution stops before ADB and shows one bounded switch/retry/exit question.
 
-Follow platforms.md capability detection. In Codex, prefer available `request_user_input_async` using `--native-tool request_user_input_async`. Initialize:
+Codex, Claude Desktop, WorkBuddy and Doubao Work use HTML choices. Read [references/html-interaction.md](references/html-interaction.md); prefer the installed MCP App, otherwise the authenticated local browser page. Claude Code retains native `AskUserQuestion` with `--surface auto --host-platform claude`. Initialize desktop sessions:
 
 ```sh
-python3 ../../scripts/tv-helper init-session <artifact-dir>/session.json --surface auto --host-platform <claude|codex|workbuddy|doubao-work> --execution-context local_computer
+python3 ../../scripts/tv-helper init-session <artifact-dir>/session.json --surface html --host-platform <claude-desktop|codex|workbuddy|doubao-work> --execution-context local_computer
 ```
 
 Run entry immediately for Release checks, 24-hour update snooze and passive precheck. Validate replacement identity/version/SHA-256 before updating. Precheck locates ADB and runs `adb version` and `adb devices -l`; it cannot scan or connect.
 
 ```sh
-python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.4
+python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.4.0-rc.1
 ```
 
-For `native_required`, display `context_markdown`, then call `tool_name` with exact `tool_input`. Keep context outside the short card. Every decision requires native choices; never ask for numbered-text answers. Record observed tool failures:
-
-For `response_delivery=async_user_message`, preserve question/presentation IDs and yield until the actual user reply. Tool acknowledgement or preselection is not an answer.
-
-```sh
-python3 ../../scripts/tv-helper record-surface-failure <artifact-dir>/session.json --question-id <presentation.question_id> --presentation-id <presentation.presentation_id> --tool-name <presentation.tool_name> --reason <native_tool_not_exposed|native_tool_call_failed|native_tool_render_failed> --detail <observed-error>
-```
-
-Retry the returned native presentation once. For `native_blocked`, display its table and pause; resume only after host recovery using `resume-native`. Never use a text menu. Preserve options, explicit consent and safe exit.
+For `html_required`, open the real page and receive clicks using `tv_ui_wait` or `wait-ui`. Never submit answers for the user. Native/legacy sessions follow platforms.md: show `context_markdown`, call the exact tool payload, wait for the real answer; report observed errors with `record-surface-failure`. Desktop checkpoints may migrate using `resume-html`. No numbered-text menus.
 
 ## Continue a question
 
-Submit the exact visible answer through:
+HTML submits through its controller automatically; read its authoritative result, never resubmit the same answer via CLI. For native sessions only, submit the exact visible answer through:
 
 ```sh
 python3 ../../scripts/tv-helper workflow-native-answer <artifact-dir>/session.json --question-id <current-id> --presentation-id <current-presentation-id> --value <returned-label-or-value>
 ```
 
-Use `--values-json` for actual native multi-select. Pagination/toggles stay in the current question. Input starts with a native fill-information choice; only `accepts_free_input=true` permits the supplemental input field after the options. On exit code 2, redisplay context and the returned native card, not a text menu.
+Use `--values-json` for native multi-select. Input requires the fill-information choice first. Invalid answers redisplay context and choices without advancing.
 
 When the result contains `action_required`, execute only that approved action. Record real stdout/stderr, exit code, inspected identity/hash, or read-only check in an evidence JSON object, then submit it before displaying any completion state:
 
@@ -67,7 +59,7 @@ Read [references/adb-operations.md](references/adb-operations.md) before device 
 
 Use `../../catalog/apps.json`. All apps stay selectable; source-review status never blocks downloading. For missing URLs, resolve after confirmation per apk-policy.md.
 
-Use fixed task labels and the application table. Use native multi-select or native toggle pages; confirm names and versions before downloading. Download is not install approval. Dangbei uses only publisher-linked sources.
+Use fixed task labels and the application table. HTML shows the full multi-select list and a fixed confirmation button; native uses multi-select or toggle pages. Confirm names/versions before downloading; download is not install approval. Dangbei uses publisher-linked sources.
 
 After reading target identity, run `prepare-device-context` with the packaged guide and compatibility data. After verifying Emotn UI, ask separately about Home and wallpaper. Custom wallpaper needs a valid image and apply confirmation; always show identity, independent risks, and possible vendor reset.
 

@@ -83,6 +83,7 @@ def render_markdown(frame: InteractionFrame) -> str:
 
 
 NATIVE_TOOL_BY_PLATFORM = {
+    "claude-desktop": "AskUserQuestion",
     "claude": "AskUserQuestion",
     "workbuddy": "AskUserQuestion",
     "doubao-work": "AskUserQuestion",
@@ -277,6 +278,9 @@ def _presentation_id(question: Any, platform: str, tool_name: str, tool_input: d
 
 def build_host_presentation(question: Any, session: dict[str, Any]) -> dict[str, Any]:
     """All decisions require a native control; missing controls pause, never downgrade."""
+    if session.get("interaction_surface") == "html":
+        from .html_ui import html_presentation
+        return html_presentation(question, session)
     platform = str(session.get("host_platform", "codex"))
     tool_name = resolve_native_tool(platform, session.get("native_tool"))
     capabilities = session.get("interaction_capabilities") or {}

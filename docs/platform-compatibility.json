@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "skill": "android-tv-apps-helper",
-  "version": "0.3.4",
+  "version": "0.4.0-rc.1",
   "validated_at": "2026-09-16",
   "core_contract": {
     "states": "S0-S11",
@@ -17,50 +17,59 @@
   },
   "platforms": {
     "codex": {
-      "distribution": "android-tv-apps-helper-codex-v0.3.4.zip or repository_plugin",
+      "distribution": "android-tv-apps-helper-codex-v0.4.0-rc.1.zip",
       "artifact_validation": "passed",
-      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
-      "live_installation": "not_run_for_v0.3.4",
-      "live_invocation": "not_run_for_v0.3.4",
-      "native_choice_gui": "not_run_for_v0.3.4",
-      "current_host_async_tool_delivery": "accepted_true_for_icon_preference_not_end_to_end_acceptance",
+      "presentation_contract": "html_embedded_mcp_app_or_local_browser",
+      "live_installation": "not_run_for_v0.4.0-rc.1",
+      "live_invocation": "not_run_for_v0.4.0-rc.1",
+      "native_choice_gui": "legacy_only_not_current_acceptance",
       "computer_use": "blocked_native_pipe_startup_failed",
       "physical_tv": "not_run",
-      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance.",
-      "packaged_cli_multiturn": "passed_shared_core_multiturn_and_codex_async_schema"
+      "note": "MCP/browser protocol tests are not real-client acceptance.",
+      "packaged_cli_multiturn": "native_regression_and_html_entry_wait_passed",
+      "embedded_html_gui": "not_verified",
+      "browser_click_tests": "passed_shared_html"
     },
     "workbuddy": {
-      "distribution": "android-tv-apps-helper-workbuddy-v0.3.4.zip",
+      "distribution": "android-tv-apps-helper-workbuddy-v0.4.0-rc.1.zip",
       "artifact_validation": "passed",
-      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
-      "live_installation": "not_run_for_v0.3.4",
-      "live_invocation": "not_run_for_v0.3.4",
-      "native_choice_gui": "not_run_for_v0.3.4",
+      "presentation_contract": "html_embedded_mcp_app_or_local_browser",
+      "live_installation": "not_run_for_v0.4.0-rc.1",
+      "live_invocation": "not_run_for_v0.4.0-rc.1",
+      "native_choice_gui": "legacy_only_not_current_acceptance",
       "physical_tv": "not_run",
-      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance.",
-      "packaged_cli_multiturn": "passed_shared_core_multiturn_and_codex_async_schema"
+      "note": "MCP/browser protocol tests are not real-client acceptance.",
+      "packaged_cli_multiturn": "native_regression_and_html_entry_wait_passed",
+      "embedded_html_gui": "not_verified",
+      "browser_click_tests": "passed_shared_html",
+      "capability_evidence": "WorkBuddy 5.5.6 local MCP App bridge and official Buddy App MCP Apps docs"
     },
     "doubao-work": {
-      "distribution": "android-tv-apps-helper-doubao-work-v0.3.4.zip",
+      "distribution": "android-tv-apps-helper-doubao-work-v0.4.0-rc.1.zip",
       "artifact_validation": "passed",
-      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
-      "live_installation": "not_run_for_v0.3.4",
-      "live_invocation": "not_run_for_v0.3.4",
-      "native_choice_gui": "not_run_for_v0.3.4",
+      "presentation_contract": "html_embedded_mcp_app_or_local_browser",
+      "live_installation": "not_run_for_v0.4.0-rc.1",
+      "live_invocation": "not_run_for_v0.4.0-rc.1",
+      "native_choice_gui": "legacy_only_not_current_acceptance",
       "physical_tv": "not_run",
-      "note": "User will validate in a fresh conversation; historical UI evidence is not current acceptance.",
-      "packaged_cli_multiturn": "passed_shared_core_multiturn_and_codex_async_schema"
+      "note": "MCP/browser protocol tests are not real-client acceptance.",
+      "packaged_cli_multiturn": "native_regression_and_html_entry_wait_passed",
+      "embedded_html_gui": "not_verified",
+      "browser_click_tests": "passed_shared_html",
+      "capability_evidence": "DoubaoWork 2.29.10 local MCP App HTML and bridge resources; no official public acceptance claim"
     },
     "claude": {
-      "distribution": "android-tv-apps-helper-claude-v0.3.4.zip",
+      "distribution": "android-tv-apps-helper-claude-v0.4.0-rc.1.zip",
       "artifact_validation": "passed",
-      "presentation_contract": "required_native_choices_pagination_input_after_choice_block_without_native_tool",
-      "live_installation": "not_run_for_v0.3.4",
-      "live_invocation": "not_run_for_v0.3.4",
-      "native_choice_gui": "not_run_for_v0.3.4",
+      "presentation_contract": "desktop_html_embedded_or_browser_code_native",
+      "live_installation": "not_run_for_v0.4.0-rc.1",
+      "live_invocation": "not_run_for_v0.4.0-rc.1",
+      "native_choice_gui": "legacy_only_not_current_acceptance",
       "physical_tv": "not_run",
-      "note": "Client validation deferred by user.",
-      "packaged_cli_multiturn": "passed_shared_core_multiturn_and_codex_async_schema"
+      "note": "Claude Desktop client validation deferred; local execution required.",
+      "packaged_cli_multiturn": "native_regression_and_html_entry_wait_passed",
+      "embedded_html_gui": "not_verified",
+      "browser_click_tests": "passed_shared_html"
     }
   }
 }

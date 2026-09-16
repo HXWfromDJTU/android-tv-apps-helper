@@ -30,11 +30,13 @@ class SessionStore:
         python_command: str = "python3",
         native_tool: str | None = None,
     ) -> "SessionStore":
-        if interaction_surface not in {"auto", "structured_form", "text_menu"}:
-            raise ValueError("interaction_surface must be auto, structured_form or text_menu")
-        supported_platforms = {"claude", "codex", "workbuddy", "doubao-work"}
+        if interaction_surface not in {"auto", "structured_form", "text_menu", "html"}:
+            raise ValueError("interaction_surface must be auto, structured_form, text_menu or html")
+        supported_platforms = {"claude", "claude-desktop", "codex", "workbuddy", "doubao-work"}
         if host_platform not in supported_platforms:
             raise ValueError(f"Unsupported host_platform: {host_platform}")
+        if interaction_surface == "html" and host_platform == "claude":
+            raise ValueError("Claude Code uses native controls; use claude-desktop for HTML.")
         from .presentation import resolve_native_tool
         resolved_tool = resolve_native_tool(host_platform, native_tool)
         if execution_context != "local_computer":
@@ -66,7 +68,7 @@ class SessionStore:
                 "candidate_ip": None,
                 "approved_plan": None,
                 "history": [],
-                "workflow_revision": "v0.3.4",
+                "workflow_revision": "v0.4.0-rc.1",
                 "session_sequence": 0,
                 "interaction_capabilities": {
                     "native_status": "pending" if resolved_surface == "structured_form" else "unavailable",
@@ -122,7 +124,7 @@ class SessionStore:
         migrated = dict(data)
         migrated["schema_version"] = 3
         defaults = {
-            "workflow_revision": "v0.3.4",
+            "workflow_revision": "v0.4.0-rc.1",
             "session_sequence": 0,
             "interaction_capabilities": {},
             "update_check": {},
@@ -152,7 +154,7 @@ class SessionStore:
             migrated["approved_plan"] = {
                 **migrated["approved_plan"],
                 "requires_revalidation": True,
-                "revalidation_reason": "Session migrated to workflow revision v0.3.4.",
+                "revalidation_reason": "Session migrated to workflow revision v0.4.0-rc.1.",
             }
         return migrated
 
@@ -224,6 +226,17 @@ class SessionStore:
             data["native_tool"] = resolve_native_tool(data["host_platform"], native_tool)
             self._write(data)
         self.update_interaction_ui(data.get("interaction_ui") or {})
+
+    def resume_html(self, question_id: str) -> None:
+        data = self.read()
+        if data.get("host_platform") not in {"codex", "claude-desktop", "workbuddy", "doubao-work"}:
+            raise ValueError("Claude Code uses native controls; use claude-desktop for HTML.")
+        if (data.get("pending_question") or {}).get("question_id") != question_id:
+            raise AnswerError("恢复目标不是当前问题。")
+        data["interaction_surface"] = "html"
+        data["interaction_surface_requested"] = "html"
+        data["interaction_ui"] = {**data.get("interaction_ui", {}), "revision": uuid.uuid4().hex}
+        self._write(data)
 
     def set_question(self, question: Question) -> None:
         data = self.read()

@@ -50,7 +50,18 @@ class UpdateTests(unittest.TestCase):
     def test_stable_semver_comparison_ignores_prerelease_by_default(self):
         self.assertEqual(compare_stable_versions("0.2.0", "0.3.0"), 1)
         self.assertEqual(compare_stable_versions("0.3.0", "0.3.0"), 0)
+        self.assertEqual(compare_stable_versions("0.4.0-rc.1", "0.4.0"), 1)
         self.assertIsNone(compare_stable_versions("0.2.0", "0.3.0-rc.1"))
+
+    def test_claude_desktop_updates_use_the_shared_claude_package(self):
+        import hashlib
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "claude.zip"
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("android-tv-apps-helper/SKILL.md", "---\nname: android-tv-apps-helper\nversion: 0.4.0\nplatform: claude\n---\n")
+            result = validate_update_package(package, expected_sha256=hashlib.sha256(package.read_bytes()).hexdigest(), expected_version="0.4.0", expected_platform="claude-desktop")
+            self.assertEqual(result["platform"], "claude")
 
     def test_decline_suppresses_every_update_for_twenty_four_hours(self):
         now = datetime(2026, 9, 15, 8, 0, tzinfo=UTC)
