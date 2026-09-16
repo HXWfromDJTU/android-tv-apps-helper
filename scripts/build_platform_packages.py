@@ -34,7 +34,6 @@ description_en: Safely connect an Android TV, validate and install APKs, and dia
 category: productivity
 version: {version}
 author: SwainWong
-allowed-tools: Bash
 user-invocable: true
 """
     elif platform == "doubao-work":
@@ -42,20 +41,17 @@ user-invocable: true
 description_zh: 通过必答选择题安全连接 Android TV、核验并安装 APK、诊断画面声音和遥控问题。
 version: {version}
 author: SwainWong
-allowed-tools: Bash
 user-invocable: true
 """
     elif platform == "claude":
         extra = f"""metadata:
   version: {version}
   platforms: claude,codex,workbuddy,doubao-work
-allowed-tools: Bash
 """
     elif platform == "codex":
         extra = f"""display_name: Android TV Apps Helper
 version: {version}
 author: SwainWong
-allowed-tools: Bash
 user-invocable: true
 """
     else:
@@ -94,7 +90,19 @@ def _skill_body(platform: str) -> str:
             "python3 ../../scripts/tv-helper",
             "python3 scripts/tv-helper",
         )
-    return body
+    if platform in {"workbuddy", "doubao-work", "claude"}:
+        adapter = """## Host-native interaction adapter
+
+Render `presentation.context_markdown` immediately above the control when the native component cannot contain a Markdown table. Call `AskUserQuestion` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required`. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is unavailable or fails to render, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and observed error before using the returned text fallback.
+
+"""
+    else:
+        adapter = """## Host-native interaction adapter
+
+Render `presentation.context_markdown` immediately above the control when the native component cannot contain a Markdown table. Call `request_user_input` with the exact `presentation.tool_input` whenever `presentation.mode` is `native_required` and the tool is exposed. Do not print the choices as assistant text first. Map the returned label with `presentation.answer_value_map`. If the tool is not exposed in the current Codex mode, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, and reason `native_tool_not_exposed` before using the returned text fallback.
+
+"""
+    return body.replace("# Android TV Apps Helper\n", "# Android TV Apps Helper\n\n" + adapter, 1)
 
 
 def _package_files(platform: str, version: str) -> dict[str, tuple[bytes, int]]:

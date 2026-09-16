@@ -5,7 +5,7 @@ description: Use when a user wants to connect an Android TV over ADB, install or
 
 # Android TV Apps Helper
 
-Guide one Android TV through a deterministic, reversible workflow. The harness owns wording, transitions, tables, validation, and approvals. The model supplies verified observations only.
+Guide one Android TV through a deterministic, reversible workflow. The harness owns questions, transitions, validation, and approvals; the model supplies verified observations.
 
 ## Start every invocation
 
@@ -14,16 +14,22 @@ Read [references/platforms.md](references/platforms.md), [references/interaction
 Create a checkpoint with:
 
 ```sh
-python3 ../../scripts/tv-helper init-session <artifact-dir>/session.json --surface <structured_form|text_menu> --host-platform <claude|codex|workbuddy|doubao-work> --execution-context local_computer
+python3 ../../scripts/tv-helper init-session <artifact-dir>/session.json --surface auto --host-platform <claude|codex|workbuddy|doubao-work> --execution-context local_computer
 ```
 
-At the first safe point, use the harness entry command. It checks the official stable GitHub Release and then runs the automatic limited read-only precheck. A declined update suppresses every update reminder for 24 hours using stable user-data state outside the installed Skill. Never delete the working version before the new host package, Skill ID, version, and SHA-256 are validated. The precheck may locate ADB and run `adb version` and `adb devices -l`; it may not scan a subnet or connect to an unselected address.
+Run the entry command immediately. It checks the official stable Release, honors the persistent 24-hour update snooze, and runs the limited read-only precheck. Keep the working version until its replacement identity, version, and SHA-256 pass. Precheck may locate ADB and run `adb version` and `adb devices -l`; it cannot scan or connect.
 
 ```sh
-python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.0
+python3 ../../scripts/tv-helper workflow-entry <artifact-dir>/session.json --installed-version 0.3.1
 ```
 
-Use `component_prompt` and `component_options` only when `native_card_compatible` is true. Never render `prompt` alone, omit choices, preselect, or hide `safe_exit` in Other. Otherwise show `rendered` unchanged. For `short_text`, collect text and omit synthetic `options[0]`. Never ask whether to begin precheck.
+Obey `presentation`. For `native_required`, render `context_markdown` immediately above the control when the native component cannot contain a Markdown table, then call `tool_name` with `tool_input`. Never print the choices as a text menu, and map the selected label through `answer_value_map`. On an observed native-tool failure, record it before using text:
+
+```sh
+python3 ../../scripts/tv-helper record-surface-failure <artifact-dir>/session.json --question-id <presentation.question_id> --presentation-id <presentation.presentation_id> --tool-name <presentation.tool_name> --reason <native_tool_not_exposed|native_tool_call_failed|native_tool_render_failed> --detail <observed-error>
+```
+
+For `text_fallback`, show `rendered` unchanged. `native_tool_call_failed` and `native_tool_render_failed` apply only to the current question; retry native controls for the next compatible question. `native_tool_not_exposed` applies to the current host session. Never omit choices, preselect, hide `safe_exit` in Other, or ask to begin precheck.
 
 ## Continue a question
 
@@ -57,9 +63,9 @@ Read [references/adb-operations.md](references/adb-operations.md) before device 
 
 Use `../../catalog/apps.json` as the application source of truth.
 
-Use the fixed task labels and application table. Multi-select uses the native control or numbers such as `1、2、3`; then confirm the resolved application names and versions before downloading. Downloading does not approve installation. Dangbei Market uses only its publisher-linked official source and never asks an ordinary user to find an APK.
+Use the fixed task labels and application table. Multi-select uses the native control or `1、2、3`; confirm resolved names and versions before downloading. Download is not install approval. Dangbei Market uses only its publisher-linked official source.
 
-After reading the target identity, run `prepare-device-context` with `data/device-guides.json` and `data/compatibility.json`. After Emotn UI is verified installed, separately ask about the default launcher and wallpaper. Custom wallpaper requires a valid image plus apply confirmation. Every wallpaper question states that vendor firmware may reset it after days, reboot, or update. Show the verified TV identity and independent Home/wallpaper risks before approval.
+After reading target identity, run `prepare-device-context` with the packaged guide and compatibility data. After verifying Emotn UI, ask separately about Home and wallpaper. Custom wallpaper needs a valid image and apply confirmation; always show identity, independent risks, and possible vendor reset.
 
 ## Evidence and finish
 

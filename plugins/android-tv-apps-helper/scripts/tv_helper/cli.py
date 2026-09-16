@@ -11,12 +11,13 @@ from .apk import ApkError, approve_plan, create_install_bundle_plan, create_inst
 from .catalog import CatalogError, eligible_downloads, load_catalog, validate_catalog
 from .compatibility import match_or_default
 from .guides import match_device_guide
+from .presentation import build_host_presentation
 from .questions import AnswerError, Question
 from .report import render_final_report
 from .precheck import run_passive_precheck
 from .session import SessionStore
 from .update import UpdateStateStore, fetch_latest_stable_release
-from .workflow import WorkflowEngine, render_question
+from .workflow import WorkflowEngine
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -25,7 +26,7 @@ def _parser() -> argparse.ArgumentParser:
 
     init = subcommands.add_parser("init-session")
     init.add_argument("session", type=Path)
-    init.add_argument("--surface", required=True, choices=("structured_form", "text_menu"))
+    init.add_argument("--surface", required=True, choices=("auto", "structured_form", "text_menu"))
     init.add_argument(
         "--host-platform",
         default="codex",
@@ -41,6 +42,22 @@ def _parser() -> argparse.ArgumentParser:
 
     show = subcommands.add_parser("show-session")
     show.add_argument("session", type=Path)
+
+    surface_failure = subcommands.add_parser("record-surface-failure")
+    surface_failure.add_argument("session", type=Path)
+    surface_failure.add_argument(
+        "--reason",
+        required=True,
+        choices=(
+            "native_tool_not_exposed",
+            "native_tool_call_failed",
+            "native_tool_render_failed",
+        ),
+    )
+    surface_failure.add_argument("--detail", required=True)
+    surface_failure.add_argument("--question-id", required=True)
+    surface_failure.add_argument("--presentation-id", required=True)
+    surface_failure.add_argument("--tool-name", required=True)
 
     workflow_start = subcommands.add_parser("workflow-start")
     workflow_start.add_argument("session", type=Path)
@@ -137,6 +154,20 @@ def _question_payload(question: Question | None) -> dict[str, object] | None:
     return question.to_dict() if question else None
 
 
+def _interactive_payload(
+    store: SessionStore,
+    question: Question | None,
+    **extra: object,
+) -> dict[str, object]:
+    presentation = build_host_presentation(question, store.read()) if question else None
+    return {
+        **extra,
+        "question": _question_payload(question),
+        "presentation": presentation,
+        "rendered": presentation.get("rendered") if presentation else None,
+    }
+
+
 def main(arguments: Sequence[str] | None = None) -> int:
     try:
         args = _parser().parse_args(arguments)
@@ -153,14 +184,32 @@ def main(arguments: Sequence[str] | None = None) -> int:
         elif args.command == "show-session":
             store = SessionStore(args.session)
             _print_session(store)
+        elif args.command == "record-surface-failure":
+            store = SessionStore(args.session)
+            store.record_surface_failure(
+                args.reason,
+                detail=args.detail,
+                question_id=args.question_id,
+                presentation_id=args.presentation_id,
+                tool_name=args.tool_name,
+            )
+            pending = store.read().get("pending_question")
+            question = Question.from_dict(pending) if pending else None
+            _print_json(
+                _interactive_payload(
+                    store,
+                    question,
+                    accepted=True,
+                    surface_failure_recorded=True,
+                )
+            )
         elif args.command == "workflow-start":
             precheck = json.loads(args.precheck.read_text(encoding="utf-8"))
             if not isinstance(precheck, dict):
                 raise ValueError("Precheck input must be a JSON object.")
-            question = WorkflowEngine(SessionStore(args.session)).start(precheck)
-            _print_json(
-                {"accepted": True, "question": question.to_dict(), "rendered": render_question(question)}
-            )
+            store = SessionStore(args.session)
+            question = WorkflowEngine(store).start(precheck)
+            _print_json(_interactive_payload(store, question, accepted=True))
         elif args.command == "workflow-entry":
             if args.precheck:
                 precheck = json.loads(args.precheck.read_text(encoding="utf-8"))
@@ -201,25 +250,26 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 ),
             )
             _print_json(
-                {
-                    "accepted": True,
-                    "update_error": update_error,
-                    "question": question.to_dict(),
-                    "rendered": render_question(question),
-                }
+                _interactive_payload(
+                    store,
+                    question,
+                    accepted=True,
+                    update_error=update_error,
+                )
             )
         elif args.command == "workflow-answer":
-            result = WorkflowEngine(SessionStore(args.session)).submit(
+            store = SessionStore(args.session)
+            result = WorkflowEngine(store).submit(
                 args.value, question_id=args.question_id
             )
             question = result.get("question")
-            payload = {
-                "accepted": bool(result["accepted"]),
-                "error": result.get("error"),
-                "question": _question_payload(question),
-                "rendered": render_question(question) if question else None,
-                "action_required": result.get("action_required"),
-            }
+            payload = _interactive_payload(
+                store,
+                question,
+                accepted=bool(result["accepted"]),
+                error=result.get("error"),
+                action_required=result.get("action_required"),
+            )
             _print_json(payload)
             if not result["accepted"]:
                 return 2
@@ -227,19 +277,20 @@ def main(arguments: Sequence[str] | None = None) -> int:
             evidence = json.loads(args.evidence.read_text(encoding="utf-8"))
             if not isinstance(evidence, dict):
                 raise ValueError("Action evidence must be a JSON object.")
-            result = WorkflowEngine(SessionStore(args.session)).record_action(
+            store = SessionStore(args.session)
+            result = WorkflowEngine(store).record_action(
                 args.action_id,
                 status=args.status,
                 evidence=evidence,
             )
             question = result.get("question")
             _print_json(
-                {
-                    "accepted": bool(result["accepted"]),
-                    "record": result.get("record"),
-                    "question": _question_payload(question),
-                    "rendered": render_question(question) if question else None,
-                }
+                _interactive_payload(
+                    store,
+                    question,
+                    accepted=bool(result["accepted"]),
+                    record=result.get("record"),
+                )
             )
             if not result["accepted"]:
                 return 2

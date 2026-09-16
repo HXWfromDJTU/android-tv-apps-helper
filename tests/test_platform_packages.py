@@ -51,7 +51,7 @@ class PlatformPackageTests(unittest.TestCase):
             hashes_by_platform: dict[str, dict[str, str]] = {}
 
             for platform in PLATFORMS:
-                output = temp / f"android-tv-apps-helper-{platform}-v0.3.0.zip"
+                output = temp / f"android-tv-apps-helper-{platform}-v0.3.1.zip"
                 result = subprocess.run(
                     [
                         sys.executable,
@@ -69,7 +69,7 @@ class PlatformPackageTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 metadata = json.loads(result.stdout)
                 self.assertEqual(metadata["platform"], platform)
-                self.assertEqual(metadata["version"], "0.3.0")
+                self.assertEqual(metadata["version"], "0.3.1")
 
                 with zipfile.ZipFile(output) as archive:
                     names = set(archive.namelist())
@@ -87,7 +87,7 @@ class PlatformPackageTests(unittest.TestCase):
 
                     skill = archive.read(ROOT + "SKILL.md").decode("utf-8")
                     self.assertIn("name: android-tv-apps-helper", skill)
-                    self.assertIn("version: 0.3.0", skill)
+                    self.assertIn("version: 0.3.1", skill)
                     frontmatter = skill.split("---", 2)[1]
                     top_level_keys = {
                         line.split(":", 1)[0]
@@ -96,6 +96,14 @@ class PlatformPackageTests(unittest.TestCase):
                     }
                     if platform in {"workbuddy", "doubao-work", "codex"}:
                         self.assertIn("version", top_level_keys)
+                    if platform in {"workbuddy", "doubao-work", "claude"}:
+                        self.assertNotIn("allowed-tools:", frontmatter)
+                        self.assertIn("Call `AskUserQuestion`", skill)
+                    if platform == "codex":
+                        self.assertNotIn("allowed-tools:", frontmatter)
+                        self.assertIn("Call `request_user_input`", skill)
+                    self.assertIn("--surface auto", skill)
+                    self.assertIn("record-surface-failure", skill)
                     if platform == "claude":
                         self.assertIn("${CLAUDE_SKILL_DIR}/scripts/tv-helper", skill)
                     else:
@@ -116,14 +124,18 @@ class PlatformPackageTests(unittest.TestCase):
                         "init-session",
                         str(session),
                         "--surface",
-                        "text_menu",
+                        "auto",
+                        "--host-platform",
+                        platform,
                     ],
                     capture_output=True,
                     text=True,
                     check=False,
                 )
                 self.assertEqual(harness.returncode, 0, harness.stderr)
-                self.assertEqual(json.loads(harness.stdout)["current_state"], "S0")
+                initialized = json.loads(harness.stdout)
+                self.assertEqual(initialized["current_state"], "S0")
+                self.assertEqual(initialized["host_platform"], platform)
 
             first = hashes_by_platform[PLATFORMS[0]]
             for platform in PLATFORMS[1:]:
@@ -167,7 +179,7 @@ class PlatformPackageTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             metadata = json.loads(result.stdout)
-            self.assertEqual(metadata["version"], "0.3.0")
+            self.assertEqual(metadata["version"], "0.3.1")
             self.assertEqual(len(metadata["artifacts"]), 4)
             lines = (output_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(lines), 4)

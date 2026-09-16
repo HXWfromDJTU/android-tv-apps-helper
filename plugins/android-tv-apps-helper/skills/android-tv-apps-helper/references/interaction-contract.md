@@ -22,14 +22,14 @@ Answers such as “好的”, “继续”, “随便”, or “你决定” are
 
 ## Surface selection
 
-Set `interaction_surface` once per session:
+Initialize with `--surface auto`; the model does not choose the surface. The harness starts with `structured_form` and emits `presentation.mode = native_required` for compatible questions:
 
 - `structured_form`: a supported host-native required form, single-choice card, or button surface exists.
 - `text_menu`: no supported UI exists, the UI call fails, the result cannot render, or a required submission value is missing.
 
-UI failure changes only the surface. Preserve the question ID, options, and state. Never emit raw `<widget>`, `<choices>`, `<visual-option>`, or fake HTML buttons. Do not call another product such as ChatCut merely to borrow its UI.
+UI failure is recorded only after `record-surface-failure` saves `question_id`, the immutable `presentation_id`, exact `tool_name`, one of `native_tool_not_exposed`, `native_tool_call_failed`, or `native_tool_render_failed`, and non-empty observed detail. The harness rejects failures from an older question, older rendering, or different tool. A missing host tool disables native controls for the session; a call or render failure falls back only for the current question, and the next compatible question retries the native control. Preserve the question ID, options, and state. Never emit raw `<widget>`, `<choices>`, `<visual-option>`, or fake HTML buttons. Do not call another product such as ChatCut merely to borrow its UI.
 
-For `structured_form`, use stable option values with localized labels and descriptions. Use a native card only when `native_card_compatible` is true. Otherwise render the complete text menu: never omit choices, never preselect the recommendation, and never map `safe_exit` to a generic Other field. Keep the label-to-value map when a host returns display text. Mark blocking inputs `required`. For `explicit_consent`, use one initially unselected confirmation control containing the full action and impact; attachments and other fields are not consent.
+For `structured_form`, the harness returns `tool_name`, exact `tool_input`, `context_markdown`, and `answer_value_map`. Call the tool rather than paraphrasing it. Render `context_markdown` directly above the control when the host cannot place a Markdown table inside it. The serialized `native_card_compatible` field is only a coarse four-option signal; the platform adapter must also enforce the host's exact option and question-type limits before using a native card. Otherwise the harness returns a complete text fallback with `question_not_native_compatible`: never omit choices, never preselect the recommendation, and never map `safe_exit` to a generic Other field. Keep the label-to-value map when a host returns display text. Mark blocking inputs `required`. For `explicit_consent`, use one initially unselected confirmation control containing the full action and impact; attachments and other fields are not consent.
 
 ## Question types
 

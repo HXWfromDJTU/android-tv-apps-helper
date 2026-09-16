@@ -77,9 +77,11 @@ class WorkBuddyPackageTests(unittest.TestCase):
                     "description_en:",
                     f"version: {expected_version}",
                     "author: SwainWong",
-                    "allowed-tools: Bash",
                 ):
                     self.assertIn(field, skill)
+                self.assertIn("Call `AskUserQuestion`", skill)
+                self.assertIn("--surface auto", skill)
+                self.assertIn("record-surface-failure", skill)
                 self.assertIn("python3 scripts/tv-helper", skill)
                 self.assertIn("references/apps.json", skill)
                 self.assertNotIn("../../scripts", skill)

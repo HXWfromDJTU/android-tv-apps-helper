@@ -7,7 +7,7 @@ import json
 
 from .guides import validate_wallpaper
 from .evidence import validate_action_evidence
-from .presentation import InteractionFrame, SummaryRow, render_markdown
+from .presentation import render_question_markdown
 from .questions import AnswerError, Option, Question, validate_answer
 from .session import SessionStore
 from .update import UpdateStateStore, record_update_decline, should_prompt_update
@@ -857,55 +857,7 @@ def build_question(state: str, context: dict[str, Any]) -> Question:
 
 
 def render_question(question: Question) -> str:
-    rows = tuple(
-        SummaryRow(
-            str(row.get("status", "pending")),
-            str(row.get("item", "事项")),
-            str(row.get("result", "")),
-            str(row.get("evidence", "")),
-        )
-        for row in question.summary_rows
-    )
-    if question.previous_result_summary:
-        rows = (
-            SummaryRow("completed", "上一轮/当前进度", question.previous_result_summary),
-            *rows,
-        )
-    if not rows:
-        rows = (SummaryRow("pending", "当前进度", "等待处理"),)
-    numbered = [
-        option.shortcut or str(index)
-        for index, option in enumerate(question.options, 1)
-        if option.enabled
-    ]
-    if question.kind == "multi_choice":
-        accepted = "请用原生多选，或回复编号并用分隔符连接，例如：1、2；返回/退出须单独选择。"
-    elif question.kind == "short_text":
-        accepted = f"请按“{question.input_prefix}…”格式回答，或明确回复：" + "、".join(numbered[1:]) + "。"
-    else:
-        accepted = "请明确回复：" + "、".join(numbered) + "。"
-    frame_options = []
-    start = 2 if question.kind == "short_text" else 1
-    visible_options = question.options[1:] if question.kind == "short_text" else question.options
-    for original_index, option in enumerate(visible_options, start=start):
-        label = option.label
-        description = option.description
-        if option.recommended:
-            label += "（推荐）"
-        if not option.enabled:
-            label += "（不可选）"
-            description = option.unavailable_reason or description
-        frame_options.append((option.value, label, description, option.shortcut or str(original_index)))
-    frame = InteractionFrame(
-        rows=rows,
-        blocker=question.blocker_summary,
-        guidance=question.remediation_guidance,
-        question_id=question.question_id,
-        question=question.prompt,
-        options=tuple(frame_options),
-        accepted_answer=accepted,
-    )
-    return render_markdown(frame)
+    return render_question_markdown(question)
 
 
 class WorkflowEngine:

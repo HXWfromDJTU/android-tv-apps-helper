@@ -53,6 +53,18 @@ class SkillContractTests(unittest.TestCase):
             self.assertIn(platform, text)
         for invariant in ("PRECHECK-WIFI-Q1", "pending_question", "local_computer"):
             self.assertIn(invariant, text)
+        for native_contract in (
+            "AskUserQuestion",
+            "request_user_input",
+            "record-surface-failure",
+            "native_required",
+        ):
+            self.assertIn(native_contract, text)
+
+    def test_skill_does_not_allow_the_model_to_choose_the_surface(self):
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("--surface auto", text)
+        self.assertNotIn("--surface <structured_form|text_menu>", text)
 
     def test_skill_forbids_unapproved_host_downloads_after_read_only_precheck(self):
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")

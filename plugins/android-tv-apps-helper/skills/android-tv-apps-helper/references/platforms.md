@@ -8,26 +8,29 @@ The host adapter only locates the Skill, selects a supported UI surface, and sup
 - Claude Desktop or claude.ai imports the Claude ZIP through its custom Skills interface when the account supports custom Skills and code execution.
 - Resolve the harness with `${CLAUDE_SKILL_DIR}/scripts/tv-helper` and initialize with `--host-platform claude --execution-context local_computer`.
 - If code execution cannot reach the user's LAN, stop before S0.
+- Claude Code must call `AskUserQuestion` whenever `presentation.mode` is `native_required`. Submit one question only, preserve the supplied labels/descriptions, and map the selected label through `answer_value_map`.
 
 ## Codex
 
 - Use the repository plugin/marketplace or the canonical project Skill.
 - Resolve the harness relative to the plugin Skill and initialize with `--host-platform codex --execution-context local_computer`.
-- Prefer a native required-choice surface when one is actually available; otherwise use `text_menu`.
-- A repository/plugin install must be removed and reinstalled from the v0.3.0 candidate for live acceptance; package presence alone is not invocation evidence.
+- Call `request_user_input` whenever `presentation.mode` is `native_required` and the tool is exposed in the current mode. If it is not exposed, run `record-surface-failure` with the returned `question_id`, `presentation_id`, `tool_name`, reason `native_tool_not_exposed`, and the observed limitation before showing text.
+- A repository/plugin install must be removed and reinstalled from the v0.3.1 candidate for live acceptance; package presence alone is not invocation evidence.
 
 ## WorkBuddy
 
 - Install the WorkBuddy ZIP from its GitHub Release URL in an Agent conversation; use manual Skill upload only when direct installation is unavailable.
 - Locate the installed Skill root, run `python3 scripts/tv-helper`, and initialize with `--host-platform workbuddy --execution-context local_computer`.
+- Call `AskUserQuestion` with the exact returned `presentation.tool_input` whenever `presentation.mode` is `native_required`. A prose list is a failure, not an equivalent rendering.
 - Treat the installed-Skill list and a new-conversation invocation as evidence; a download message alone is not installation evidence.
-- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.0`.
+- Conversation installation is preferred when supported. If the Agent only downloads the ZIP, use manual upload and keep the step marked incomplete until the installed list shows version `0.3.1`.
 
 ## 豆包工作
 
 - Install the Doubao Work ZIP from its GitHub Release URL in an Agent conversation; use 技能管理中的本地导入 as fallback.
 - Start a 本地电脑 task. Never use 云电脑 for ADB because it cannot safely reach the Android TV on the user's local network.
 - Locate the installed Skill root, run `python3 scripts/tv-helper`, and initialize with `--host-platform doubao-work --execution-context local_computer`.
+- Call `AskUserQuestion` with the exact returned `presentation.tool_input` whenever that tool is exposed and `presentation.mode` is `native_required`. If the host rejects the call, record the concrete error together with the returned `question_id`, `presentation_id`, and `tool_name` before falling back.
 - Invoke from `/`, 更多技能, or an explicit request to use Android TV Apps Helper. Verify the Skill is visible before claiming installation.
 - Use a new local-computer conversation after reinstall so cached old instructions are not mistaken for the new version.
 
@@ -37,6 +40,6 @@ After update handling and automatic passive precheck, every platform starts at `
 
 ## Rendering and validation
 
-Prefer a native required card and native multi-select only when the host really supports them. If a native component cannot contain a Markdown table, render the table immediately above it and repeat the key blocker in the prompt. Record that degradation in `docs/platform-validation.md`.
+`native_required` means the Agent must call the named tool; it may not answer with Markdown instead. Text is permitted only when the harness returns `text_fallback`, either because the current question is incompatible or because `record-surface-failure` stored a real host failure. If a native component cannot contain a Markdown table, its self-contained prompt still repeats every key result, blocker, and remediation step. Record that degradation in `docs/platform-validation.md`.
 
 For every live host, separately record: old version visible, removal visible, candidate installed and version visible, explicit invocation, automatic precheck, invalid-answer lock, app-selection/named confirmation, finish-safety rendering, and any unavailable local-computer or native-control capability. Redact account names, SSID, IP, and serial from public evidence.

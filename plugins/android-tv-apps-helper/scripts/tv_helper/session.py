@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -28,8 +29,8 @@ class SessionStore:
         skill_root: str | None = None,
         python_command: str = "python3",
     ) -> "SessionStore":
-        if interaction_surface not in {"structured_form", "text_menu"}:
-            raise ValueError("interaction_surface must be structured_form or text_menu")
+        if interaction_surface not in {"auto", "structured_form", "text_menu"}:
+            raise ValueError("interaction_surface must be auto, structured_form or text_menu")
         supported_platforms = {"claude", "codex", "workbuddy", "doubao-work"}
         if host_platform not in supported_platforms:
             raise ValueError(f"Unsupported host_platform: {host_platform}")
@@ -38,6 +39,8 @@ class SessionStore:
                 "Android TV ADB requires execution_context=local_computer; "
                 "a cloud computer cannot reach the local TV safely."
             )
+        requested_surface = interaction_surface
+        resolved_surface = "structured_form" if interaction_surface == "auto" else interaction_surface
         store = cls(path)
         store._write(
             {
@@ -46,7 +49,8 @@ class SessionStore:
                 "updated_at": _timestamp(),
                 "host_platform": host_platform,
                 "execution_context": execution_context,
-                "interaction_surface": interaction_surface,
+                "interaction_surface": resolved_surface,
+                "interaction_surface_requested": requested_surface,
                 "skill_root": skill_root,
                 "python_command": python_command,
                 "adb_path": None,
@@ -58,9 +62,16 @@ class SessionStore:
                 "candidate_ip": None,
                 "approved_plan": None,
                 "history": [],
-                "workflow_revision": "v0.3.0",
+                "workflow_revision": "v0.3.1",
                 "session_sequence": 0,
-                "interaction_capabilities": {},
+                "interaction_capabilities": {
+                    "native_status": "pending" if resolved_surface == "structured_form" else "unavailable",
+                    **(
+                        {"fallback_reason": "legacy_text_menu"}
+                        if resolved_surface == "text_menu"
+                        else {}
+                    ),
+                },
                 "update_check": {},
                 "update_state_path": None,
                 "precheck": {},
@@ -88,6 +99,18 @@ class SessionStore:
             self._write(data)
         if data.get("schema_version") != 3:
             raise ValueError("Unsupported session schema version.")
+        changed = False
+        if "interaction_surface_requested" not in data:
+            data["interaction_surface_requested"] = data.get("interaction_surface", "text_menu")
+            changed = True
+        if "interaction_capabilities" not in data:
+            data["interaction_capabilities"] = {}
+            changed = True
+        if data.get("pending_question") and not data.get("question_instance_id"):
+            data["question_instance_id"] = uuid.uuid4().hex
+            changed = True
+        if changed:
+            self._write(data)
         return data
 
     @staticmethod
@@ -95,7 +118,7 @@ class SessionStore:
         migrated = dict(data)
         migrated["schema_version"] = 3
         defaults = {
-            "workflow_revision": "v0.3.0",
+            "workflow_revision": "v0.3.1",
             "session_sequence": 0,
             "interaction_capabilities": {},
             "update_check": {},
@@ -116,6 +139,7 @@ class SessionStore:
             "finish_safety": {},
             "pending_action": None,
             "candidate_ip": None,
+            "interaction_surface_requested": data.get("interaction_surface", "text_menu"),
         }
         for key, value in defaults.items():
             migrated.setdefault(key, value)
@@ -124,9 +148,61 @@ class SessionStore:
             migrated["approved_plan"] = {
                 **migrated["approved_plan"],
                 "requires_revalidation": True,
-                "revalidation_reason": "Session migrated to workflow revision v0.3.0.",
+                "revalidation_reason": "Session migrated to workflow revision v0.3.1.",
             }
         return migrated
+
+    def record_surface_failure(
+        self,
+        reason: str,
+        *,
+        detail: str,
+        question_id: str,
+        presentation_id: str,
+        tool_name: str,
+    ) -> None:
+        allowed_reasons = {
+            "native_tool_not_exposed",
+            "native_tool_call_failed",
+            "native_tool_render_failed",
+        }
+        if reason not in allowed_reasons:
+            raise ValueError(f"Unsupported native surface failure reason: {reason}")
+        if not detail.strip():
+            raise ValueError("Native surface failure detail cannot be empty.")
+        data = self.read()
+        if not data.get("pending_question"):
+            raise AnswerError("没有待答问题时不能降级交互界面。")
+        if data.get("interaction_surface") != "structured_form":
+            raise AnswerError("当前会话已经不是原生组件模式。")
+        from .presentation import build_host_presentation
+
+        pending = Question.from_dict(data["pending_question"])
+        expected = build_host_presentation(pending, data)
+        if expected.get("mode") != "native_required":
+            raise AnswerError("当前问题没有待记录的原生组件展示。")
+        if question_id != pending.question_id:
+            raise AnswerError("交互失败回调与当前待答问题不匹配。")
+        if presentation_id != expected.get("presentation_id"):
+            raise AnswerError("交互失败回调属于过期或不匹配的展示。")
+        if tool_name != expected.get("tool_name"):
+            raise AnswerError("交互失败回调的工具名与当前展示不匹配。")
+        failure = {
+            "native_status": "failed",
+            "fallback_reason": reason,
+            "failure_detail": detail.strip(),
+            "failed_at": _timestamp(),
+            "question_id": question_id,
+            "presentation_id": presentation_id,
+            "tool_name": tool_name,
+        }
+        if reason == "native_tool_not_exposed":
+            data["interaction_surface"] = "text_menu"
+        else:
+            failure["fallback_question_id"] = data["pending_question"]["question_id"]
+        data["interaction_capabilities"] = failure
+        data["updated_at"] = _timestamp()
+        self._write(data)
 
     def set_question(self, question: Question) -> None:
         data = self.read()
@@ -137,6 +213,7 @@ class SessionStore:
             raise AnswerError(f"问题 {pending['question_id']} 尚未回答，不能覆盖待答问题。")
         data["current_state"] = question.state_id
         data["pending_question"] = question.to_dict()
+        data["question_instance_id"] = uuid.uuid4().hex
         data["updated_at"] = _timestamp()
         self._write(data)
 
@@ -172,6 +249,12 @@ class SessionStore:
                 "answered_at": _timestamp(),
             }
         )
+        capabilities = data.get("interaction_capabilities") or {}
+        if capabilities.get("fallback_question_id") == question.question_id:
+            data["interaction_capabilities"] = {
+                "native_status": "pending",
+                "last_failure": capabilities,
+            }
         data["current_state"] = answer.next_state
         data["pending_question"] = None
         data["updated_at"] = _timestamp()
